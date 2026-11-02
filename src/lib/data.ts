@@ -4,7 +4,7 @@ export type Estado = "Activo" | "En seguimiento";
 export type Interaccion = {
   id: string; tipo: string; fecha: string; responsable: string;
   participantes: string; descripcion: string;
-  proxima?: { fecha: string; descripcion: string };
+  proxima?: { fecha: string; descripcion: string } | undefined;
 };
 export type Cliente = {
   id: string; nombre: string; nit: string; estado: Estado;

@@ -31,8 +31,8 @@ function Seguimiento() {
 
   const guardar = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!f.descripcion.trim()) return toast.error("Escribe la descripción de la interacción");
-    if (f.seguimiento && (!f.proxFecha || !f.proxDesc.trim())) return toast.error("Completa la próxima acción");
+    if (!f.descripcion.trim()) { toast.error("Escribe la descripción de la interacción"); return; }
+    if (f.seguimiento && (!f.proxFecha || !f.proxDesc.trim())) { toast.error("Completa la próxima acción"); return; }
     agregarInteraccion(f.cliente, {
       tipo: f.tipo, fecha: f.fecha, responsable: f.responsable, participantes: f.participantes, descripcion: f.descripcion,
       proxima: f.seguimiento ? { fecha: f.proxFecha, descripcion: f.proxDesc } : undefined,

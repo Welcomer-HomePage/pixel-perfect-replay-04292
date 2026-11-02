@@ -38,7 +38,7 @@ function Licitaciones() {
 
   const asignar = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!a.fecha) return toast.error("Selecciona una fecha límite");
+    if (!a.fecha) { toast.error("Selecciona una fecha límite"); return; }
     const v = a.fecha.split("-").reverse().slice(0, 2).join("/");
     setProcs((ps) => ps.map((p) => (p.proceso === a.proceso ? { ...p, responsable: `${a.responsable} (${a.area})`, vence: v } : p)));
     toast.success(`Responsable asignado: ${a.responsable}${a.notificar ? " · Notificación enviada por correo y en la app" : ""}`);
