@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { USUARIOS, agregarInteraccion, useClientes } from "@/lib/data";
 
 export const Route = createFileRoute("/seguimiento")({
-  validateSearch: (s: Record<string, unknown>): { cliente?: string } => ({ cliente: typeof s.cliente === "string" ? s.cliente : undefined }),
+  validateSearch: (s: Record<string, unknown>): { cliente?: string | undefined } => ({ cliente: typeof s["cliente"] === "string" ? s["cliente"] : undefined }),
   head: () => ({
     meta: [
       { title: "Registrar seguimiento · TCI" },
@@ -26,7 +26,7 @@ function Seguimiento() {
   const navigate = useNavigate();
   const router = useRouter();
   const hoy = new Date().toISOString().slice(0, 10);
-  const [f, setF] = useState({ cliente: cliente ?? clientes[0].id, tipo: "Llamada", fecha: hoy, responsable: "Luisa Pérez", participantes: "", descripcion: "", seguimiento: false, proxFecha: "", proxDesc: "" });
+  const [f, setF] = useState({ cliente: cliente ?? clientes[0]!.id, tipo: "Llamada", fecha: hoy, responsable: "Luisa Pérez", participantes: "", descripcion: "", seguimiento: false, proxFecha: "", proxDesc: "" });
   const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
 
   const guardar = (e: React.FormEvent) => {

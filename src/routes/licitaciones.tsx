@@ -29,7 +29,7 @@ function Licitaciones() {
   const [procs, setProcs] = useState(INICIAL);
   const [flt, setFlt] = useState({ entidad: "", tipo: "", etapa: "" });
   const [aplicado, setAplicado] = useState(flt);
-  const [a, setA] = useState({ proceso: INICIAL[0].proceso, area: AREAS[0], responsable: USUARIOS[0], fecha: "", notificar: true });
+  const [a, setA] = useState({ proceso: INICIAL[0]!.proceso, area: AREAS[0]!, responsable: USUARIOS[0]!, fecha: "", notificar: true });
 
   const lista = procs.filter((p) => (!aplicado.entidad || p.entidad === aplicado.entidad) && (!aplicado.tipo || p.tipo === aplicado.tipo) && (!aplicado.etapa || p.etapa === aplicado.etapa));
   const sinAtender = procs.filter((p) => p.etapa === "Observaciones").length + 1;
