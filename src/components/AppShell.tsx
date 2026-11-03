@@ -1,7 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { ROLES, setRol, useRol, type Rol } from "@/lib/data";
+import { RolPanel } from "@/components/RolPanel";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const rol = useRol();
   const nav = "px-3 py-2 rounded-md text-sm font-semibold uppercase tracking-wider text-primary-foreground/80 hover:text-primary-foreground";
   return (
     <div className="min-h-screen">
@@ -16,9 +19,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link to="/seguimiento" className={nav} activeProps={{ className: "bg-wine text-primary-foreground" }}>Seguimiento</Link>
             <Link to="/licitaciones" className={nav} activeProps={{ className: "bg-wine text-primary-foreground" }}>Licitaciones</Link>
           </nav>
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <span className="uppercase tracking-wider text-primary-foreground/80">Rol</span>
+            <select aria-label="Rol" value={rol} onChange={(e) => setRol(e.target.value as Rol)} className="rounded-md bg-primary-foreground px-2 py-1.5 text-primary">
+              {ROLES.map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </label>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-8"><RolPanel />{children}</main>
     </div>
   );
 }

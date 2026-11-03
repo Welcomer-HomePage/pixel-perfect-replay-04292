@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Pencil, FolderPlus, LineChart, MessageSquarePlus } from "lucide-react";
 import { AppShell, EstadoBadge } from "@/components/AppShell";
-import { useClientes } from "@/lib/data";
+import { useClientes, FUENTES } from "@/lib/data";
 
 export const Route = createFileRoute("/clientes/$id")({
   head: () => ({
@@ -56,6 +56,18 @@ function Vista360() {
             <p className="mt-1 font-display text-4xl font-bold">{v}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-6 rounded-xl border bg-card p-5">
+        <h3 className="section-title mb-3">Fuentes de datos</h3>
+        <div className="flex flex-wrap gap-3">
+          {FUENTES.map((f) => (
+            <div key={f.nombre} className="rounded-lg border border-primary px-3 py-2">
+              <p className="text-sm font-bold text-primary">{f.nombre}</p>
+              <p className="text-xs text-muted-foreground">Última sincronización: {f.sync}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-3">
