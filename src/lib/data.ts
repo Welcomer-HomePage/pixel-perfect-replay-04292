@@ -69,3 +69,35 @@ export function agregarInteraccion(clienteId: string, i: Omit<Interaccion, "id">
   });
   listeners.forEach((l) => l());
 }
+
+export const ROLES = ["Líder Comercial", "Gerente de área", "Gerencia Administrativa", "Recursos Humanos", "Líder de proyecto"] as const;
+export type Rol = (typeof ROLES)[number];
+let rol: Rol = "Líder Comercial";
+const rolListeners = new Set<() => void>();
+export const useRol = () => useSyncExternalStore((l) => { rolListeners.add(l); return () => rolListeners.delete(l); }, () => rol, () => "Líder Comercial" as Rol);
+export function setRol(r: Rol) { rol = r; rolListeners.forEach((l) => l()); }
+
+export const EQUIPO_ESPECIALIZADO = [
+  { nombre: "Carlos Gómez", perfil: "Líder de proyecto", experiencia: "10 años", asignado: "Bancolombia · Fábrica de software" },
+  { nombre: "Andrea Rojas", perfil: "Arquitecta de software", experiencia: "8 años", asignado: "BBVA · Mesa de ayuda" },
+  { nombre: "Julián Martínez", perfil: "Analista QA", experiencia: "5 años", asignado: "" },
+  { nombre: "Diana Castro", perfil: "Científica de datos", experiencia: "6 años", asignado: "" },
+  { nombre: "Felipe Herrera", perfil: "Ingeniero DevOps", experiencia: "7 años", asignado: "Ecopetrol · Leasing" },
+  { nombre: "Natalia Suárez", perfil: "Experta en ciberseguridad", experiencia: "9 años", asignado: "" },
+];
+export const APROBACIONES = [
+  { id: "A-031", proceso: "IDU · Software misional", tipo: "Aprobación técnica", solicitante: "Luisa Pérez", fecha: "02/11/2026" },
+  { id: "A-029", proceso: "FNA · Mesa de ayuda", tipo: "Aprobación de presupuesto", solicitante: "Carlos Gómez", fecha: "01/11/2026" },
+  { id: "A-027", proceso: "Bancolombia · Renovación", tipo: "Aprobación técnica", solicitante: "Andrea Rojas", fecha: "30/10/2026" },
+];
+export const PQR_ASIGNADAS = [
+  { id: "PQR-0142", cliente: "Bancolombia", asunto: "Demora en respuesta de mesa de ayuda", estado: "Abierta", ans: "Vence en 6 h" },
+  { id: "PQR-0145", cliente: "IDU", asunto: "Error en módulo de reportes", estado: "Abierta", ans: "Vencido" },
+  { id: "PQR-0148", cliente: "BBVA", asunto: "Solicitud de ajuste de alcance", estado: "En gestión", ans: "Vence en 30 h" },
+];
+export const FUENTES = [
+  { nombre: "ISSA", sync: "02/11/2026 18:40" },
+  { nombre: "Microsoft Forms", sync: "02/11/2026 09:15" },
+  { nombre: "Siigo", sync: "01/11/2026 23:00" },
+  { nombre: "SharePoint", sync: "02/11/2026 17:05" },
+];

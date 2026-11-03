@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Upload } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { USUARIOS } from "@/lib/data";
 
@@ -44,17 +44,33 @@ function Licitaciones() {
     toast.success(`Responsable asignado: ${a.responsable}${a.notificar ? " · Notificación enviada por correo y en la app" : ""}`);
   };
 
+  const importar = () => {
+    const nuevos: Proc[] = [
+      { proceso: "Unidad para las Víctimas · Analítica", entidad: "Unidad para las Víctimas", tipo: "Público", etapa: "Propuesta", responsable: "Sin asignar", vence: "15/11" },
+      { proceso: "BBVA · Fábrica de software", entidad: "BBVA", tipo: "Privado", etapa: "Observaciones", responsable: "Sin asignar", vence: "10/11" },
+    ].filter((n) => !procs.some((p) => p.proceso === n.proceso));
+    if (!nuevos.length) { toast.info("No hay procesos nuevos en el archivo"); return; }
+    setProcs((ps) => [...ps, ...nuevos]);
+    toast.success(`${nuevos.length} procesos importados desde portales_entidades.xlsx`);
+  };
+
   const label = "section-title mb-1.5 block text-xs";
   return (
     <AppShell>
-      <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-wine">Licitaciones y responsables</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-wine">Licitaciones y responsables</h1>
+        <div className="max-w-xs text-right">
+          <button onClick={importar} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-wine"><Upload className="h-4 w-4" /> Importar desde portales</button>
+          <p className="mt-1 text-xs text-muted-foreground">Los portales de las entidades no exponen API; la carga se hace por archivo o por agente.</p>
+        </div>
+      </div>
       <div className="mt-5 flex items-center gap-3 rounded-lg border border-warning bg-warning-soft px-4 py-3 font-semibold text-warning-foreground">
         <AlertTriangle className="h-5 w-5 shrink-0" />
         {sinAtender} requerimientos sin atender · {hoy} propuesta{hoy !== 1 && "s"} vence{hoy !== 1 && "n"} hoy · {ganados} proceso{ganados !== 1 && "s"} ganado{ganados !== 1 && "s"}
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); setAplicado(flt); }} className="mt-6 grid gap-3 sm:grid-cols-4">
-        <select className="field" value={flt.entidad} onChange={(e) => setFlt({ ...flt, entidad: e.target.value })}><option value="">Entidad: todas</option>{["IDU", "FNA", "Ecopetrol"].map((x) => <option key={x}>{x}</option>)}</select>
+        <select className="field" value={flt.entidad} onChange={(e) => setFlt({ ...flt, entidad: e.target.value })}><option value="">Entidad: todas</option>{[...new Set(procs.map((p) => p.entidad))].map((x) => <option key={x}>{x}</option>)}</select>
         <select className="field" value={flt.tipo} onChange={(e) => setFlt({ ...flt, tipo: e.target.value })}><option value="">Tipo de cliente: todos</option>{["Público", "Mixto", "Privado"].map((x) => <option key={x}>{x}</option>)}</select>
         <select className="field" value={flt.etapa} onChange={(e) => setFlt({ ...flt, etapa: e.target.value })}><option value="">Estado: todos</option>{["Observaciones", "Propuesta", "Ganado"].map((x) => <option key={x}>{x}</option>)}</select>
         <button className="rounded-md bg-primary font-semibold text-primary-foreground hover:bg-wine">Buscar</button>
