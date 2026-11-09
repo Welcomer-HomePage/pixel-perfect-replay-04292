@@ -5,7 +5,7 @@ import { AppShell, EstadoBadge, Migas } from "@/components/AppShell";
 import { InteraccionPanel } from "@/components/InteraccionPanel";
 import { FUENTES, clienteDe, cop, etapaDe, opDe, pqrVencidosDe, useDb } from "@/lib/data";
 
-export const Route = createFileRoute("/clientes/$id")({
+export const Route = createFileRoute("/clientes_/$id")({
   head: () => ({
     meta: [
       { title: "Vista 360° del cliente · TCI" },
