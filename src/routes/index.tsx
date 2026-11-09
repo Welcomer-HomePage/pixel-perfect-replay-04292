@@ -1,73 +1,132 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, Plus, ChevronRight } from "lucide-react";
-import { AppShell, EstadoBadge } from "@/components/AppShell";
-import { useClientes } from "@/lib/data";
+import { AlertTriangle, RotateCcw } from "lucide-react";
+import { AppShell, Migas } from "@/components/AppShell";
+import { ETAPAS, alertasDe, clienteDe, cop, etapaDe, useDb, venceHoy, type Oportunidad } from "@/lib/data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Búsqueda de clientes · TCI Gestión de Clientes" },
-      { name: "description", content: "Busca clientes de TCI Software por nombre o NIT y accede a su vista 360°." },
-      { property: "og:title", content: "Búsqueda de clientes · TCI" },
-      { property: "og:description", content: "Busca clientes por nombre o NIT." },
+      { title: "Tablero de oportunidades · TCI Gestión de Clientes" },
+      { name: "description", content: "Mapa del proceso comercial de TCI: identificar, evaluar, preparar, seguir y ejecutar oportunidades." },
+      { property: "og:title", content: "Tablero de oportunidades · TCI" },
+      { property: "og:description", content: "Kanban de oportunidades por etapa del proceso comercial." },
     ],
   }),
-  component: Index,
+  component: Tablero,
 });
 
-function Index() {
-  const clientes = useClientes();
-  const [q, setQ] = useState("");
-  const [filtro, setFiltro] = useState("");
-  const norm = (s: string) => s.toLowerCase().replace(/\./g, "");
-  const lista = clientes.filter((c) => !filtro || norm(c.nombre).includes(norm(filtro)) || norm(c.nit).includes(norm(filtro)));
+const TIPOS = ["Financiero", "Público", "Mixto", "Privado"];
+
+function Tablero() {
+  const db = useDb();
+  const [flt, setFlt] = useState({ entidad: "", tipo: "", fuente: "", requisitos: "" });
+  const [alerta, setAlerta] = useState("");
+
+  const pasa = (o: Oportunidad) => {
+    const c = clienteDe(db, o.clienteId);
+    return (!flt.entidad || c?.nombre === flt.entidad)
+      && (!flt.tipo || c?.tipo === flt.tipo)
+      && (!flt.fuente || o.fuente === flt.fuente)
+      && (!flt.requisitos || o.requisitos === flt.requisitos);
+  };
+  const alertas = (o: Oportunidad) => alertasDe(o, db);
+  const pasaAlerta = (o: Oportunidad) => !alerta || alertas(o).includes(alerta);
+  const lista = db.oportunidades.filter((o) => pasa(o) && pasaAlerta(o));
+
+  const nSinAtender = db.oportunidades.filter((o) => o.estado === "Identificada").length;
+  const nVenceHoy = db.oportunidades.filter(venceHoy).length;
+  const nPqr = db.oportunidades.filter((o) => alertas(o).includes("PQR con ANS vencido")).length;
+
+  const AlertaBtn = ({ nombre, n }: { nombre: string; n: number }) => (
+    <button onClick={() => setAlerta((a) => (a === nombre ? "" : nombre))}
+      className={`rounded-full border px-3 py-1 text-xs font-semibold ${alerta === nombre ? "border-destructive bg-destructive text-destructive-foreground" : "border-warning bg-warning-soft text-warning-foreground"}`}>
+      {nombre}: {n}
+    </button>
+  );
 
   return (
     <AppShell>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-wine">Búsqueda de cliente</h1>
-          <p className="text-muted-foreground">Encuentra un cliente por nombre o NIT.</p>
+      <Migas items={[{ label: "Tablero" }]} />
+      <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-wine">Tablero de oportunidades</h1>
+
+      {/* Mapa del proceso */}
+      <div className="mt-5 flex flex-wrap items-stretch gap-2">
+        {ETAPAS.map((e, i) => (
+          <div key={e.n} className="flex items-center gap-2">
+            <div className="rounded-xl border bg-card px-4 py-3 text-center">
+              <p className="font-display text-sm font-bold uppercase tracking-wider text-primary">{e.n}. {e.nombre}</p>
+              <p className="font-display text-2xl font-bold">{db.oportunidades.filter((o) => etapaDe(o.estado) === e.n).length}</p>
+            </div>
+            {i < ETAPAS.length - 1 && <span className="text-xl text-muted-foreground">→</span>}
+          </div>
+        ))}
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-primary px-4 py-3 text-sm font-medium text-primary">
+          <RotateCcw className="h-4 w-4" /> La ejecución alimenta nuevas evaluaciones
         </div>
-        <Link to="/seguimiento" className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 font-semibold text-primary-foreground hover:bg-wine">
-          <Plus className="h-4 w-4" /> Registrar nueva interacción
-        </Link>
       </div>
 
-      <form className="mt-6 flex gap-2" onSubmit={(e) => { e.preventDefault(); setFiltro(q); }}>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input className="field pl-9" placeholder="Nombre o NIT del cliente" value={q} onChange={(e) => { setQ(e.target.value); if (!e.target.value) setFiltro(""); }} />
-        </div>
-        <button className="rounded-md bg-primary px-6 font-semibold text-primary-foreground hover:bg-wine">Buscar</button>
-      </form>
-
-      <h2 className="section-title mt-10">Clientes recientes</h2>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2">
-        {clientes.slice(0, 2).map((c) => (
-          <Link key={c.id} to="/clientes/$id" params={{ id: c.id }} className="rounded-xl border bg-card p-5 transition hover:border-primary hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <span className="font-display text-xl font-bold">{c.nombre}</span>
-              <EstadoBadge estado={c.estado} />
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">NIT {c.nit}</p>
-          </Link>
-        ))}
+      {/* Barra de alertas */}
+      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-lg border border-warning bg-warning-soft px-4 py-3 text-warning-foreground">
+        <AlertTriangle className="h-5 w-5 shrink-0" />
+        <span className="text-sm font-semibold">Alertas (haz clic para filtrar):</span>
+        <AlertaBtn nombre="Sin atender" n={nSinAtender} />
+        <AlertaBtn nombre="Vence hoy" n={nVenceHoy} />
+        <AlertaBtn nombre="PQR con ANS vencido" n={nPqr} />
+        {alerta && <button onClick={() => setAlerta("")} className="text-xs underline">Quitar filtro</button>}
       </div>
 
-      <h2 className="section-title mt-10">Todos los clientes</h2>
-      <div className="mt-3 divide-y rounded-xl border">
-        {lista.length === 0 && <p className="p-5 text-muted-foreground">No se encontraron clientes para “{filtro}”.</p>}
-        {lista.map((c) => (
-          <Link key={c.id} to="/clientes/$id" params={{ id: c.id }} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-card">
-            <div>
-              <p className="font-semibold">{c.nombre}</p>
-              <p className="text-sm text-muted-foreground">NIT {c.nit}</p>
-            </div>
-            <div className="flex items-center gap-3"><EstadoBadge estado={c.estado} /><ChevronRight className="h-4 w-4 text-muted-foreground" /></div>
-          </Link>
-        ))}
+      {/* Filtros */}
+      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+        <select className="field" value={flt.entidad} onChange={(e) => setFlt({ ...flt, entidad: e.target.value })}>
+          <option value="">Entidad: todas</option>
+          {db.clientes.map((c) => <option key={c.id}>{c.nombre}</option>)}
+        </select>
+        <select className="field" value={flt.tipo} onChange={(e) => setFlt({ ...flt, tipo: e.target.value })}>
+          <option value="">Tipo de cliente: todos</option>
+          {TIPOS.map((x) => <option key={x}>{x}</option>)}
+        </select>
+        <select className="field" value={flt.fuente} onChange={(e) => setFlt({ ...flt, fuente: e.target.value })}>
+          <option value="">Fuente: todas</option>
+          {["SECOP II", "Portal propio"].map((x) => <option key={x}>{x}</option>)}
+        </select>
+        <select className="field" value={flt.requisitos} onChange={(e) => setFlt({ ...flt, requisitos: e.target.value })}>
+          <option value="">Requisitos: todos</option>
+          {["Estándar", "Dirigido"].map((x) => <option key={x}>{x}</option>)}
+        </select>
+      </div>
+
+      {/* Kanban */}
+      <div className="mt-6 grid gap-4 overflow-x-auto lg:grid-cols-5">
+        {ETAPAS.map((e) => {
+          const ops = lista.filter((o) => etapaDe(o.estado) === e.n);
+          return (
+            <section key={e.n} className="min-w-56 rounded-xl border bg-card p-3">
+              <h2 className="section-title mb-3 flex justify-between"><span>{e.n}. {e.nombre}</span><span>{ops.length}</span></h2>
+              <div className="space-y-3">
+                {ops.map((o) => {
+                  const c = clienteDe(db, o.clienteId);
+                  const etapa = etapaDe(o.estado);
+                  return (
+                    <Link key={o.id} to="/oportunidades/$id" params={{ id: o.id }} search={{ paso: undefined }} className="block rounded-lg border bg-background p-3 transition hover:border-primary hover:shadow-md">
+                      <p className="text-xs font-semibold text-muted-foreground">{c?.nombre}</p>
+                      <p className="font-semibold leading-tight">{o.proceso}</p>
+                      <p className="mt-1 font-display text-lg font-bold text-primary">{cop(o.valor)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{o.responsable} · Vence {o.vence.split("-").reverse().join("/")}</p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-secondary-foreground">{etapa <= 2 ? "Alivia PP1" : "Alivia PP2"}</span>
+                        {alertas(o).map((a) => (
+                          <span key={a} className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">{a}</span>
+                        ))}
+                      </div>
+                    </Link>
+                  );
+                })}
+                {ops.length === 0 && <p className="text-xs text-muted-foreground">Sin oportunidades.</p>}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </AppShell>
   );
