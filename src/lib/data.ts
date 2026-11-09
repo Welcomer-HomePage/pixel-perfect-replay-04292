@@ -366,12 +366,12 @@ export function sincronizar(id: IntegracionId): string {
   const rnd = (n: number) => Math.floor(Math.random() * n);
   let msg = "";
   if (id === "issa") {
-    const c = db.clientes[rnd(db.clientes.length)];
+    const c = db.clientes[rnd(db.clientes.length)]!;
     const caso = `PQR-${Math.floor(Math.random() * 9000 + 1000)}`;
     db = { ...db, pqr: [...db.pqr, { id: caso, clienteId: c.id, asunto: "Incidente reportado en ISSA", estado: "Abierta", ans: "Vence en 48 h", fuente: "ISSA" }] };
     msg = `1 caso nuevo (${caso}) para ${c.nombre}`;
   } else if (id === "forms") {
-    const c = db.clientes[rnd(db.clientes.length)];
+    const c = db.clientes[rnd(db.clientes.length)]!;
     const nota = (4 + Math.random()).toFixed(1);
     db = { ...db, interacciones: [...db.interacciones, { id: `i-${Date.now()}`, clienteId: c.id, tipo: "Encuesta", fecha: hoyISO(), responsable: "Microsoft Forms", participantes: "Cliente", descripcion: `Encuesta de satisfacción recibida: ${nota}/5` }] };
     msg = `Encuesta ${nota}/5 de ${c.nombre}`;
@@ -383,7 +383,7 @@ export function sincronizar(id: IntegracionId): string {
     msg = `Costos y utilidad actualizados en ${db.clientes.length} clientes`;
   } else if (id === "sharepoint") {
     const ops = db.oportunidades.filter((o) => o.estado !== "Ganada");
-    const o = ops[rnd(ops.length)];
+    const o = ops[rnd(ops.length)]!;
     const doc = `Adenda_${o.pliegos.length + 1}.pdf`;
     db = { ...db, oportunidades: db.oportunidades.map((x) => x.id === o.id ? { ...x, pliegos: [...x.pliegos, doc], historial: [...x.historial, { fecha: ahora(), quien: "SharePoint", texto: `Documento sincronizado: ${doc}` }] } : x) };
     msg = `${doc} agregado a ${o.proceso}`;
@@ -403,8 +403,8 @@ export function importarCsv(texto: string): { creadas: number; errores: string[]
   const lineas = texto.replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
   const errores: string[] = [];
   if (lineas.length < 2) return { creadas: 0, errores: ["El archivo no tiene filas de datos"] };
-  const sep = lineas[0].includes(";") ? ";" : ",";
-  const cab = lineas[0].split(sep).map((h) => h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+  const sep = (lineas[0] ?? "").includes(";") ? ";" : ",";
+  const cab = (lineas[0] ?? "").split(sep).map((h) => h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
   const idx = (k: string) => cab.indexOf(k);
   for (const k of ["entidad", "proceso", "valor", "vence"]) if (idx(k) < 0) return { creadas: 0, errores: [`Falta la columna "${k}"`] };
   const nuevas: Oportunidad[] = [];
@@ -413,8 +413,8 @@ export function importarCsv(texto: string): { creadas: number; errores: string[]
     const ent = f[idx("entidad")]?.toLowerCase() ?? "";
     const c = db.clientes.find((c) => c.nombre.toLowerCase() === ent || c.id === ent || c.nit === ent || c.nombre.toLowerCase().includes(ent));
     const valor = Number(f[idx("valor")]);
-    const vence = f[idx("vence")];
-    const proceso = f[idx("proceso")];
+    const vence = f[idx("vence")] ?? "";
+    const proceso = f[idx("proceso")] ?? "";
     if (!ent || !c) { errores.push(`Fila ${i + 2}: entidad "${f[idx("entidad")]}" no existe`); return; }
     if (!proceso) { errores.push(`Fila ${i + 2}: falta el proceso`); return; }
     if (!Number.isFinite(valor) || valor <= 0) { errores.push(`Fila ${i + 2}: valor inválido`); return; }
