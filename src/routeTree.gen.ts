@@ -13,7 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as IntegracionesRouteImport } from './routes/integraciones'
 import { Route as MiBandejaRouteImport } from './routes/mi-bandeja'
-import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
+import { Route as ClientesIdRouteImport } from './routes/clientes_.$id'
 import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -37,9 +37,9 @@ const MiBandejaRoute = MiBandejaRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ClientesRoute,
+  id: '/clientes_/$id',
+  path: '/clientes/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const OportunidadesIdRoute = OportunidadesIdRouteImport.update({
   id: '/oportunidades/$id',
@@ -49,7 +49,7 @@ const OportunidadesIdRoute = OportunidadesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/clientes': typeof ClientesRouteWithChildren
+  '/clientes': typeof ClientesRoute
   '/integraciones': typeof IntegracionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -57,7 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/clientes': typeof ClientesRouteWithChildren
+  '/clientes': typeof ClientesRoute
   '/integraciones': typeof IntegracionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -66,10 +66,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/clientes': typeof ClientesRouteWithChildren
+  '/clientes': typeof ClientesRoute
   '/integraciones': typeof IntegracionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
-  '/clientes/$id': typeof ClientesIdRoute
+  '/clientes_/$id': typeof ClientesIdRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
 }
 export interface FileRouteTypes {
@@ -95,15 +95,16 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/integraciones'
     | '/mi-bandeja'
-    | '/clientes/$id'
+    | '/clientes_/$id'
     | '/oportunidades/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ClientesRoute: typeof ClientesRouteWithChildren
+  ClientesRoute: typeof ClientesRoute
   IntegracionesRoute: typeof IntegracionesRoute
   MiBandejaRoute: typeof MiBandejaRoute
+  ClientesIdRoute: typeof ClientesIdRoute
   OportunidadesIdRoute: typeof OportunidadesIdRoute
 }
 
@@ -137,12 +138,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiBandejaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/clientes/$id': {
-      id: '/clientes/$id'
-      path: '/$id'
+    '/clientes_/$id': {
+      id: '/clientes_/$id'
+      path: '/clientes/$id'
       fullPath: '/clientes/$id'
       preLoaderRoute: typeof ClientesIdRouteImport
-      parentRoute: typeof ClientesRoute
+      parentRoute: typeof rootRouteImport
     }
     '/oportunidades/$id': {
       id: '/oportunidades/$id'
@@ -154,23 +155,12 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ClientesRouteChildren {
-  ClientesIdRoute: typeof ClientesIdRoute
-}
-
-const ClientesRouteChildren: ClientesRouteChildren = {
-  ClientesIdRoute: ClientesIdRoute,
-}
-
-const ClientesRouteWithChildren = ClientesRoute._addFileChildren(
-  ClientesRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ClientesRoute: ClientesRouteWithChildren,
+  ClientesRoute: ClientesRoute,
   IntegracionesRoute: IntegracionesRoute,
   MiBandejaRoute: MiBandejaRoute,
+  ClientesIdRoute: ClientesIdRoute,
   OportunidadesIdRoute: OportunidadesIdRoute,
 }
 export const routeTree = rootRouteImport
