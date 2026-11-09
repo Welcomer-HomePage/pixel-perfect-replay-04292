@@ -300,9 +300,9 @@ export function resolverAprobacion(opId: string, aprobId: string, estado: "Aprob
 export function agregarInteraccion(clienteId: string, oportunidadId: string | undefined, i: Omit<Interaccion, "id" | "clienteId" | "oportunidadId">, proxima?: { fecha: string; descripcion: string }) {
   db = {
     ...db,
-    interacciones: [{ ...i, id: crypto.randomUUID(), clienteId, oportunidadId }, ...db.interacciones],
+    interacciones: [{ ...i, id: crypto.randomUUID(), clienteId, ...(oportunidadId ? { oportunidadId } : {}) }, ...db.interacciones],
     pendientes: proxima
-      ? [...db.pendientes, { id: crypto.randomUUID(), clienteId, oportunidadId, fecha: fmt(proxima.fecha), texto: proxima.descripcion }]
+      ? [...db.pendientes, { id: crypto.randomUUID(), clienteId, ...(oportunidadId ? { oportunidadId } : {}), fecha: fmt(proxima.fecha), texto: proxima.descripcion }]
       : db.pendientes,
     clientes: db.clientes.map((c) => (c.id === clienteId ? { ...c, ultimoContacto: fmt(i.fecha) } : c)),
   };

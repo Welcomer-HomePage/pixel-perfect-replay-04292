@@ -71,7 +71,7 @@ export function Migas({ items }: { items: { label: string; to?: string; params?:
         <span key={i} className="flex items-center gap-1">
           {i > 0 && <span>›</span>}
           {it.to
-            ? <Link to={it.to} params={it.params} className="text-primary hover:underline">{it.label}</Link>
+            ? <Link to={it.to} {...(it.params ? { params: it.params } : {})} className="text-primary hover:underline">{it.label}</Link>
             : <span className="font-semibold text-foreground">{it.label}</span>}
         </span>
       ))}
