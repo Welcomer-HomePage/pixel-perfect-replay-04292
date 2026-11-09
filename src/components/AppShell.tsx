@@ -26,6 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link to="/mi-bandeja" className={nav} activeProps={{ className: "bg-wine text-primary-foreground" }}>Mi bandeja</Link>
             <Link to="/clientes" className={nav} activeProps={{ className: "bg-wine text-primary-foreground" }}>Clientes</Link>
             <Link to="/integraciones" className={nav} activeProps={{ className: "bg-wine text-primary-foreground" }}>Integraciones</Link>
+            <Link to="/api" className={nav} activeProps={{ className: "bg-wine text-primary-foreground" }}>API</Link>
           </nav>
           <div className="flex items-center gap-3">
             <button onClick={() => setPanel(true)} className="inline-flex items-center gap-2 rounded-md bg-wine px-3 py-2 text-sm font-semibold hover:opacity-90">
