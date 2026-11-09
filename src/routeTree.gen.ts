@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiRouteImport } from './routes/api'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as IntegracionesRouteImport } from './routes/integraciones'
 import { Route as MiBandejaRouteImport } from './routes/mi-bandeja'
@@ -19,6 +20,11 @@ import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRoute = ApiRouteImport.update({
+  id: '/api',
+  path: '/api',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesRoute = ClientesRouteImport.update({
@@ -49,6 +55,7 @@ const OportunidadesIdRoute = OportunidadesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api': typeof ApiRoute
   '/clientes': typeof ClientesRoute
   '/integraciones': typeof IntegracionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api': typeof ApiRoute
   '/clientes': typeof ClientesRoute
   '/integraciones': typeof IntegracionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api': typeof ApiRoute
   '/clientes': typeof ClientesRoute
   '/integraciones': typeof IntegracionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api'
     | '/clientes'
     | '/integraciones'
     | '/mi-bandeja'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api'
     | '/clientes'
     | '/integraciones'
     | '/mi-bandeja'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api'
     | '/clientes'
     | '/integraciones'
     | '/mi-bandeja'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiRoute: typeof ApiRoute
   ClientesRoute: typeof ClientesRoute
   IntegracionesRoute: typeof IntegracionesRoute
   MiBandejaRoute: typeof MiBandejaRoute
@@ -115,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api': {
+      id: '/api'
+      path: '/api'
+      fullPath: '/api'
+      preLoaderRoute: typeof ApiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes': {
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiRoute: ApiRoute,
   ClientesRoute: ClientesRoute,
   IntegracionesRoute: IntegracionesRoute,
   MiBandejaRoute: MiBandejaRoute,
