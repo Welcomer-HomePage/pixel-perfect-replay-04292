@@ -12,10 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as IntegracionesRouteImport } from './routes/integraciones'
-import { Route as LicitacionesRouteImport } from './routes/licitaciones'
 import { Route as MiBandejaRouteImport } from './routes/mi-bandeja'
-import { Route as SeguimientoRouteImport } from './routes/seguimiento'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
+import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -32,19 +31,9 @@ const IntegracionesRoute = IntegracionesRouteImport.update({
   path: '/integraciones',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LicitacionesRoute = LicitacionesRouteImport.update({
-  id: '/licitaciones',
-  path: '/licitaciones',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MiBandejaRoute = MiBandejaRouteImport.update({
   id: '/mi-bandeja',
   path: '/mi-bandeja',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SeguimientoRoute = SeguimientoRouteImport.update({
-  id: '/seguimiento',
-  path: '/seguimiento',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
@@ -52,34 +41,36 @@ const ClientesIdRoute = ClientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ClientesRoute,
 } as any)
+const OportunidadesIdRoute = OportunidadesIdRouteImport.update({
+  id: '/oportunidades/$id',
+  path: '/oportunidades/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/integraciones': typeof IntegracionesRoute
-  '/licitaciones': typeof LicitacionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
-  '/seguimiento': typeof SeguimientoRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/oportunidades/$id': typeof OportunidadesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/integraciones': typeof IntegracionesRoute
-  '/licitaciones': typeof LicitacionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
-  '/seguimiento': typeof SeguimientoRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/oportunidades/$id': typeof OportunidadesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/integraciones': typeof IntegracionesRoute
-  '/licitaciones': typeof LicitacionesRoute
   '/mi-bandeja': typeof MiBandejaRoute
-  '/seguimiento': typeof SeguimientoRoute
   '/clientes/$id': typeof ClientesIdRoute
+  '/oportunidades/$id': typeof OportunidadesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,37 +78,33 @@ export interface FileRouteTypes {
     | '/'
     | '/clientes'
     | '/integraciones'
-    | '/licitaciones'
     | '/mi-bandeja'
-    | '/seguimiento'
     | '/clientes/$id'
+    | '/oportunidades/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/clientes'
     | '/integraciones'
-    | '/licitaciones'
     | '/mi-bandeja'
-    | '/seguimiento'
     | '/clientes/$id'
+    | '/oportunidades/$id'
   id:
     | '__root__'
     | '/'
     | '/clientes'
     | '/integraciones'
-    | '/licitaciones'
     | '/mi-bandeja'
-    | '/seguimiento'
     | '/clientes/$id'
+    | '/oportunidades/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   IntegracionesRoute: typeof IntegracionesRoute
-  LicitacionesRoute: typeof LicitacionesRoute
   MiBandejaRoute: typeof MiBandejaRoute
-  SeguimientoRoute: typeof SeguimientoRoute
+  OportunidadesIdRoute: typeof OportunidadesIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -143,25 +130,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IntegracionesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/licitaciones': {
-      id: '/licitaciones'
-      path: '/licitaciones'
-      fullPath: '/licitaciones'
-      preLoaderRoute: typeof LicitacionesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/mi-bandeja': {
       id: '/mi-bandeja'
       path: '/mi-bandeja'
       fullPath: '/mi-bandeja'
       preLoaderRoute: typeof MiBandejaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/seguimiento': {
-      id: '/seguimiento'
-      path: '/seguimiento'
-      fullPath: '/seguimiento'
-      preLoaderRoute: typeof SeguimientoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/$id': {
@@ -170,6 +143,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/clientes/$id'
       preLoaderRoute: typeof ClientesIdRouteImport
       parentRoute: typeof ClientesRoute
+    }
+    '/oportunidades/$id': {
+      id: '/oportunidades/$id'
+      path: '/oportunidades/$id'
+      fullPath: '/oportunidades/$id'
+      preLoaderRoute: typeof OportunidadesIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -190,9 +170,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientesRoute: ClientesRouteWithChildren,
   IntegracionesRoute: IntegracionesRoute,
-  LicitacionesRoute: LicitacionesRoute,
   MiBandejaRoute: MiBandejaRoute,
-  SeguimientoRoute: SeguimientoRoute,
+  OportunidadesIdRoute: OportunidadesIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
