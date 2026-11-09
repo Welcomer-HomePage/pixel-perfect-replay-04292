@@ -342,3 +342,88 @@ export function setRol(r: Rol) {
   if (typeof window !== "undefined") window.localStorage.setItem("tci-rol", r);
   rolListeners.forEach((l) => l());
 }
+
+// ============= Integraciones =============
+export type IntegracionId = "issa" | "forms" | "siigo" | "sharepoint" | "portales";
+const SYNC_KEY = "tci-sync-v1";
+let syncs: Record<IntegracionId, string> = {
+  issa: "02/11/2026 18:40", forms: "02/11/2026 09:15", siigo: "01/11/2026 23:00", sharepoint: "02/11/2026 17:05", portales: "30/10/2026 08:00",
+};
+if (typeof window !== "undefined") {
+  try { const r = window.localStorage.getItem(SYNC_KEY); if (r) syncs = { ...syncs, ...JSON.parse(r) }; } catch { /* ignorar */ }
+}
+const syncListeners = new Set<() => void>();
+const ahora = () => new Date().toLocaleString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "");
+const marcarSync = (id: IntegracionId) => {
+  syncs = { ...syncs, [id]: ahora() };
+  if (typeof window !== "undefined") window.localStorage.setItem(SYNC_KEY, JSON.stringify(syncs));
+  syncListeners.forEach((l) => l());
+};
+export const useSyncs = () => useSyncExternalStore((l) => { syncListeners.add(l); return () => syncListeners.delete(l); }, () => syncs, () => syncs);
+
+/** Simula una sincronización y modifica datos reales de la app. Devuelve un resumen. */
+export function sincronizar(id: IntegracionId): string {
+  const rnd = (n: number) => Math.floor(Math.random() * n);
+  let msg = "";
+  if (id === "issa") {
+    const c = db.clientes[rnd(db.clientes.length)];
+    const caso = `PQR-${Math.floor(Math.random() * 9000 + 1000)}`;
+    db = { ...db, pqr: [...db.pqr, { id: caso, clienteId: c.id, asunto: "Incidente reportado en ISSA", estado: "Abierta", ans: "Vence en 48 h", fuente: "ISSA" }] };
+    msg = `1 caso nuevo (${caso}) para ${c.nombre}`;
+  } else if (id === "forms") {
+    const c = db.clientes[rnd(db.clientes.length)];
+    const nota = (4 + Math.random()).toFixed(1);
+    db = { ...db, interacciones: [...db.interacciones, { id: `i-${Date.now()}`, clienteId: c.id, tipo: "Encuesta", fecha: hoyISO(), responsable: "Microsoft Forms", participantes: "Cliente", descripcion: `Encuesta de satisfacción recibida: ${nota}/5` }] };
+    msg = `Encuesta ${nota}/5 de ${c.nombre}`;
+  } else if (id === "siigo") {
+    db = { ...db, clientes: db.clientes.map((c) => {
+      const n = parseInt(c.costo.replace(/\D/g, "")) || 100;
+      return { ...c, costo: `$${n + rnd(20)} M`, utilidad: `+${8 + rnd(15)}%` };
+    }) };
+    msg = `Costos y utilidad actualizados en ${db.clientes.length} clientes`;
+  } else if (id === "sharepoint") {
+    const ops = db.oportunidades.filter((o) => o.estado !== "Ganada");
+    const o = ops[rnd(ops.length)];
+    const doc = `Adenda_${o.pliegos.length + 1}.pdf`;
+    db = { ...db, oportunidades: db.oportunidades.map((x) => x.id === o.id ? { ...x, pliegos: [...x.pliegos, doc], historial: [...x.historial, { fecha: ahora(), quien: "SharePoint", texto: `Documento sincronizado: ${doc}` }] } : x) };
+    msg = `${doc} agregado a ${o.proceso}`;
+  } else {
+    const n = importarOportunidades();
+    msg = n ? `${n} procesos nuevos en Identificar` : "Sin procesos nuevos";
+  }
+  if (id !== "portales") emit();
+  marcarSync(id);
+  return msg;
+}
+
+export const CSV_EJEMPLO = "entidad,proceso,valor,vence,fuente,requisitos\nIDU,Mantenimiento de software,420,2026-12-05,SECOP II,Estándar\nEcopetrol,Mesa de servicios TI,980,2026-12-12,Portal propio,Dirigido\n";
+
+/** Importa licitaciones desde CSV (columnas: entidad, proceso, valor, vence, fuente, requisitos). */
+export function importarCsv(texto: string): { creadas: number; errores: string[] } {
+  const lineas = texto.replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const errores: string[] = [];
+  if (lineas.length < 2) return { creadas: 0, errores: ["El archivo no tiene filas de datos"] };
+  const sep = lineas[0].includes(";") ? ";" : ",";
+  const cab = lineas[0].split(sep).map((h) => h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+  const idx = (k: string) => cab.indexOf(k);
+  for (const k of ["entidad", "proceso", "valor", "vence"]) if (idx(k) < 0) return { creadas: 0, errores: [`Falta la columna "${k}"`] };
+  const nuevas: Oportunidad[] = [];
+  lineas.slice(1).forEach((l, i) => {
+    const f = l.split(sep).map((x) => x.trim());
+    const ent = f[idx("entidad")]?.toLowerCase() ?? "";
+    const c = db.clientes.find((c) => c.nombre.toLowerCase() === ent || c.id === ent || c.nit === ent || c.nombre.toLowerCase().includes(ent));
+    const valor = Number(f[idx("valor")]);
+    const vence = f[idx("vence")];
+    const proceso = f[idx("proceso")];
+    if (!ent || !c) { errores.push(`Fila ${i + 2}: entidad "${f[idx("entidad")]}" no existe`); return; }
+    if (!proceso) { errores.push(`Fila ${i + 2}: falta el proceso`); return; }
+    if (!Number.isFinite(valor) || valor <= 0) { errores.push(`Fila ${i + 2}: valor inválido`); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(vence)) { errores.push(`Fila ${i + 2}: fecha debe ser AAAA-MM-DD`); return; }
+    if (db.oportunidades.some((o) => o.clienteId === c.id && o.proceso === proceso) || nuevas.some((o) => o.clienteId === c.id && o.proceso === proceso)) { errores.push(`Fila ${i + 2}: ya existe`); return; }
+    const fuente = idx("fuente") >= 0 && f[idx("fuente")]?.toLowerCase().includes("propio") ? "Portal propio" : "SECOP II";
+    const requisitos = idx("requisitos") >= 0 && f[idx("requisitos")]?.toLowerCase().startsWith("dirig") ? "Dirigido" : "Estándar";
+    nuevas.push(op({ id: `op-csv-${Date.now()}-${i}`, clienteId: c.id, proceso, valor, estado: "Identificada", vence, fuente, requisitos }));
+  });
+  if (nuevas.length) { db = { ...db, oportunidades: [...db.oportunidades, ...nuevas] }; emit(); marcarSync("portales"); }
+  return { creadas: nuevas.length, errores };
+}
