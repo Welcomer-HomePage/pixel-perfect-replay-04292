@@ -1,9 +1,7 @@
-import { EmptyData } from "@/components/EmptyData";
-import { Button } from "@/components/ui/button";
 import { useVisibleDb, useSession, isAdmin } from "@/lib/auth";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, Migas } from "@/components/AppShell";
-import { clienteDe, cop, opDe, useRol, venceHoy } from "@/lib/data";
+import { clienteDe, cop, etapaDe, opDe, useRol, venceHoy } from "@/lib/data";
 
 export const Route = createFileRoute("/mi-bandeja")({
   head: () => ({
@@ -27,23 +25,31 @@ function MiBandeja() {
   const session=useSession();
   const items: Item[] = [];
 
-  if (rol === "Líder Comercial") {
+  const allRoles = rol === "Administrador";
+  if (rol === "Líder Comercial" || allRoles) {
     db.oportunidades.filter(venceHoy).forEach((o) => items.push({ texto: `Propuesta por vencer hoy: ${o.proceso}`, detalle: `${clienteDe(db, o.clienteId)?.nombre} · ${cop(o.valor)}`, opId: o.id, paso: 4 }));
     db.oportunidades.filter((o) => o.estado === "Identificada").forEach((o) => items.push({ texto: `Oportunidad sin atender: ${o.proceso}`, detalle: clienteDe(db, o.clienteId)?.nombre ?? "", opId: o.id, paso: 1 }));
+    db.pendientes.forEach((p) => {
+      const op = p.oportunidadId ? opDe(db, p.oportunidadId) : undefined;
+      if (op) items.push({ texto: p.texto, detalle: `${clienteDe(db, p.clienteId)?.nombre ?? ""} · ${p.fecha}`, opId: op.id, paso: op.estado === "En evaluación" ? 2 : 4 });
+    });
   }
-  if (rol === "Gerente de área" || rol === "Gerencia Administrativa") {
+  if (rol === "Gerente de área" || rol === "Gerencia Administrativa" || allRoles) {
     db.oportunidades.forEach((o) => o.aprobaciones.filter((a) => a.estado === "Pendiente").forEach((a) => {
-      if ((a.aprobadorRol ?? (a.tipo === "Aprobación técnica" ? "Gerente de área" : "Gerencia Administrativa")) !== rol) return;
+      if (!allRoles && (a.aprobadorRol ?? (a.tipo === "Aprobación técnica" ? "Gerente de área" : "Gerencia Administrativa")) !== rol) return;
       items.push({ texto: `${a.tipo}: ${o.proceso}`, detalle: `Solicita ${a.solicitante} · ${clienteDe(db, o.clienteId)?.nombre}`, opId: o.id, paso: 3 });
     }));
   }
-  if (rol === "Líder de proyecto") {
+  if (rol === "Líder de proyecto" || allRoles) {
     db.pqr.filter((p) => p.estado !== "Cerrada").forEach((p) => {
       const op = p.oportunidadId ? opDe(db, p.oportunidadId) : db.oportunidades.find((o) => o.clienteId === p.clienteId && o.estado === "Ganada");
       if (op) items.push({ texto: `PQR por atender: ${p.asunto}`, detalle: `${p.id} · ${clienteDe(db, p.clienteId)?.nombre} · ANS: ${p.ans}`, opId: op.id, paso: 5 });
     });
-    db.oportunidades.forEach((o) => o.tareas.filter((t) => (isAdmin(session) || t.responsable === session?.nombre) && t.estado !== "Listo").forEach((t) =>
-      items.push({ texto: `Tarea asignada: ${t.tarea}`, detalle: `${o.proceso} · Límite ${t.limite.split("-").reverse().join("/")}`, opId: o.id, paso: 3 })));
+  }
+  if (rol !== "Recursos Humanos") {
+    const roleArea = rol === "Líder Comercial" ? "Comercial" : rol === "Gerencia Administrativa" ? "Área financiera" : rol === "Gerente de área" ? "Área técnica" : "";
+    db.oportunidades.forEach((o) => o.tareas.filter((t) => (allRoles || (isAdmin(session) ? t.area === roleArea || rol === "Líder de proyecto" && t.responsable === "Juan Martínez" : t.responsable === session?.nombre)) && t.estado !== "Listo").forEach((t) =>
+      items.push({ texto: `Tarea asignada: ${t.tarea}`, detalle: `${o.proceso} · Límite ${t.limite.split("-").reverse().join("/")}`, opId: o.id, paso: etapaDe(o.estado) })));
   }
 
   return (
@@ -72,7 +78,7 @@ function MiBandeja() {
         </div>
       ) : (
         <div className="mt-6 divide-y rounded-xl border bg-card">
-          {items.length === 0 && (db.origen.experiencia ? <EmptyData/> : <p className="p-5 text-muted-foreground">No tienes pendientes. ¡Buen trabajo!</p>)}
+          {items.length === 0 && <p className="p-5 text-muted-foreground">No tienes pendientes. ¡Buen trabajo!</p>}
           {items.map((it, i) => (
             <Link key={i} to="/oportunidades/$id" params={{ id: it.opId }} search={{ paso: it.paso }} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-accent">
               <div>

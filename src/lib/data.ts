@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import { useSyncExternalStore } from "react";
+import { populateInbox } from "./inbox-seed";
 
 // ============= Tipos =============
 export type EstadoCliente = "Activo" | "En seguimiento" | "Inactivo";
@@ -43,6 +44,7 @@ export type Cliente = {
 };
 
 export type Db = {
+  inboxSeedVersion?: number;
   clientes: Cliente[]; oportunidades: Oportunidad[]; interacciones: Interaccion[];
   pendientes: Pendiente[]; pqr: Pqr[]; notificaciones: Notificacion[];
   proyectos: Contrato[]; equipo: Persona[]; encuestas: Encuesta[]; usuarios: Usuario[];
@@ -237,7 +239,7 @@ export function hasCrmData(d: Db) {
 }
 export async function loadRealTci() {
   const real = await import("./real-data.json");
-  replaceDb({ ...emptyDb(), ...(real.default as Pick<Db, "clientes" | "proyectos" | "oportunidades">), usuarios: db.usuarios.length ? db.usuarios : demoUsuarios(), origen: { archivo: "Datos reales de TCI", fecha: new Date().toISOString(), experiencia: true } });
+  replaceDb(populateInbox({ ...emptyDb(), ...(real.default as Pick<Db, "clientes" | "proyectos" | "oportunidades">), usuarios: db.usuarios.length ? db.usuarios : demoUsuarios(), origen: { archivo: "Datos reales de TCI", fecha: new Date().toISOString(), experiencia: true } }));
 }
 export async function hydrateDb() {
   if (typeof window === "undefined") return;
@@ -248,7 +250,10 @@ export async function hydrateDb() {
       const ops = (real.default as Pick<Db, "oportunidades">).oportunidades.filter((o) => ids.has(o.clienteId));
       if (ops.length) { db = deriveDb({ ...db, oportunidades: ops }); }
     }
-    refreshStore(); return;
+    const populated = populateInbox(db);
+    if (populated !== db) replaceDb(populated);
+    else refreshStore();
+    return;
   } } } catch { /* archivo local inválido */ }
   await loadRealTci();
 }

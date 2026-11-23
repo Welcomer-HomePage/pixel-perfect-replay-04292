@@ -6,3 +6,4 @@
 - [x] Cargar consolidado adjunto y verificar 16 clientes / 36 proyectos y recorridos completos.
 - [x] Incorporar la nueva carga real TCI sin alterar el ejemplo ni las importaciones posteriores.
 - [x] Mostrar participación y totales COP/SMMLV; verificar 16 clientes, 36 proyectos, FNA 7 y Caja Social 9.
+- [x] Poblar Mi bandeja por perfil y para Administrador, conservar los cambios al recargar y verificar los accesos a los pendientes.

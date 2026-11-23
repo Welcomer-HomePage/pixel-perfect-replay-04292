@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {rol === "Recursos Humanos" && <Link to="/mi-bandeja" className={nav}>Equipo</Link>}
             {admin && <Link to="/datos" className={nav} activeProps={{ className: "bg-wine text-primary-foreground" }}>Cargar datos</Link>}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             {rol !== "Recursos Humanos" && db.clientes.length > 0 && <Button variant="ghost" onClick={() => setPanel(true)} className="inline-flex items-center gap-2 rounded-md bg-wine px-3 py-2 text-sm font-semibold hover:opacity-90">
               <MessageSquarePlus className="h-4 w-4" /> Registrar interacción
             </Button>}

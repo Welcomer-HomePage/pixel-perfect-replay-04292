@@ -40,7 +40,7 @@ describe("Datos reales de TCI", () => {
     expect(experienceTotals(running).smmlv).toBe(0);
     expect(experienceTotals(getDb().proyectos).smmlv).toBeCloseTo(16499.365, 3);
   });
-  it("puebla el tablero con los 36 contratos ganados y un pipeline activo, sin pendientes ni PQR ficticias", async () => {
+  it("puebla el tablero con los 36 contratos ganados y un pipeline activo", async () => {
     await loadRealTci();
     const ops = getDb().oportunidades;
     expect(ops.filter((o) => o.estado === "Ganada")).toHaveLength(36);
@@ -50,8 +50,8 @@ describe("Datos reales de TCI", () => {
       expect(op?.clienteId).toBe(p.clienteId);
       expect(op?.proceso).toBe(p.nombre);
     }
-    expect(getDb().pendientes).toHaveLength(0);
-    expect(getDb().pqr).toHaveLength(0);
+    expect(getDb().pendientes).toHaveLength(2);
+    expect(getDb().pqr).toHaveLength(4);
   });
   it("inicializa un navegador nuevo y un store vacío", async () => {
     localStorage.removeItem("tci-db-v3");

@@ -13,3 +13,4 @@
 - Parse workbooks in the browser, validate references against the chosen replacement/merge scope, and require review before saving.
 - Keep demo sessions in sessionStorage and apply role-scoped reads and route gates centrally; this is not production authentication.
 - Keep the bundled real-data seed separate from the legacy demo seed; hydrate it only when CRM records are empty so subsequent workbook imports remain authoritative.
+- Seed simulated inbox work once, only for the bundled TCI dataset, with a persisted version marker; preserve completed work and imported records on reload.
