@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { useVisibleDb, useSession, isAdmin } from "@/lib/auth";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -5,9 +7,9 @@ import { Check, FileText, LineChart, Lock, MessageSquarePlus } from "lucide-reac
 import { AppShell, EstadoBadge, Migas } from "@/components/AppShell";
 import { InteraccionPanel } from "@/components/InteraccionPanel";
 import {
-  AREAS, ETAPAS, RESPONSABLES_POR_AREA, actualizarFase, asignarTarea, avanzarEtapa,
+  AREAS, ETAPAS, actualizarFase, asignarTarea, avanzarEtapa,
   cambiarEstadoTarea, cargaPorResponsable, clienteDe, cop, decidirParticipacion,
-  etapaDe, opDe, resolverAprobacion, useDb, useRol, venceHoy, type Oportunidad,
+  etapaDe, opDe, resolverAprobacion, useRol, venceHoy, type Oportunidad,
 } from "@/lib/data";
 
 export const Route = createFileRoute("/oportunidades/$id")({
@@ -20,6 +22,8 @@ export const Route = createFileRoute("/oportunidades/$id")({
       { name: "description", content: "Seguimiento de la oportunidad en las cinco etapas del proceso comercial." },
       { property: "og:title", content: "Ficha de la oportunidad · TCI" },
       { property: "og:description", content: "Identificar, evaluar, preparar, seguir y ejecutar." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: FichaOportunidad,
@@ -31,7 +35,7 @@ const btn = "inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold";
 function FichaOportunidad() {
   const { id } = Route.useParams();
   const { paso } = Route.useSearch();
-  const db = useDb();
+  const db = useVisibleDb();
   const rol = useRol();
   const navigate = useNavigate({ from: Route.fullPath });
   const o = opDe(db, id);
@@ -39,7 +43,8 @@ function FichaOportunidad() {
   const [estudio, setEstudio] = useState(false);
   if (!o) throw notFound();
 
-  const c = clienteDe(db, o.clienteId)!;
+  const c = clienteDe(db, o.clienteId);
+  if(!c) throw notFound();
   const etapaActual = etapaDe(o.estado);
   const pasoActivo = paso ?? etapaActual;
   const aprobPendientes = o.aprobaciones.filter((a) => a.estado === "Pendiente").length;
@@ -78,19 +83,19 @@ function FichaOportunidad() {
               {venceHoy(o) && <span className="ml-2 rounded-full bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Vence hoy</span>}
             </p>
           </div>
-          <button onClick={() => setPanel(true)} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>
+          <Button variant="ghost" onClick={() => setPanel(true)} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>
             <MessageSquarePlus className="h-4 w-4" /> Registrar interacción
-          </button>
+          </Button>
         </div>
         {/* Stepper */}
         <div className="mt-4 flex gap-1 overflow-x-auto">
           {ETAPAS.map((e) => (
-            <button key={e.n} onClick={() => irPaso(e.n)}
+            <Button variant="ghost" key={e.n} onClick={() => irPaso(e.n)}
               className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold ${
                 e.n === pasoActivo ? "bg-primary text-primary-foreground" : e.n < etapaActual ? "bg-success-soft text-success" : "bg-secondary text-secondary-foreground hover:bg-accent"}`}>
               {e.n < etapaActual && <Check className="h-4 w-4" />}
               {e.n}. {e.nombre}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -121,15 +126,15 @@ function FichaOportunidad() {
       {estudio && (
         <div className="fixed inset-0 z-50 flex justify-end bg-foreground/40" onClick={() => setEstudio(false)}>
           <aside className="h-full w-full max-w-md overflow-y-auto bg-background p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-wine">Estudio de mercado</h2>
+            <h2 className="font-display text-2xl font-bold uppercase tracking-normal text-wine">Estudio de mercado</h2>
             <p className="mt-2 text-sm text-muted-foreground">Resumen simulado para {c.nombre} · {o.proceso}</p>
             <div className="mt-4 space-y-3 text-sm">
               <p><strong>Competidores probables:</strong> 4 firmas con experiencia en el sector {c.tipo.toLowerCase()}.</p>
               <p><strong>Rango de valor de mercado:</strong> {cop(Math.round(o.valor * 0.85))} – {cop(Math.round(o.valor * 1.15))}.</p>
               <p><strong>Histórico de la entidad:</strong> {c.historicos} proyectos, utilidad {c.utilidad}.</p>
-              <p><strong>Recomendación:</strong> participar con aliado especializado si los requisitos son dirigidos.</p>
+              <p><strong>Recomendación:</strong> evaluar el alcance y la capacidad del equipo antes de participar.</p>
             </div>
-            <button onClick={() => setEstudio(false)} className="mt-6 rounded-md border px-6 py-2.5 font-semibold hover:bg-accent">Cerrar</button>
+            <Button variant="ghost" onClick={() => setEstudio(false)} className="mt-6 rounded-md border px-6 py-2.5 font-semibold hover:bg-accent">Cerrar</Button>
           </aside>
         </div>
       )}
@@ -145,7 +150,7 @@ function Paso1({ o, onAvanzar }: { o: Oportunidad; onAvanzar: () => void }) {
         <h3 className="section-title mb-3">Identificación</h3>
         <dl className="space-y-3 text-sm">
           <div><dt className="font-semibold">Fuente</dt><dd>{o.fuente}</dd></div>
-          <div><dt className="font-semibold">Tipo de requisitos</dt><dd>{o.requisitos}</dd></div>
+          <div><dt className="font-semibold">Observaciones</dt><dd>{o.observaciones || "—"}</dd></div>
           <div><dt className="font-semibold">Vencimiento</dt><dd>{o.vence.split("-").reverse().join("/")}</dd></div>
         </dl>
       </div>
@@ -157,7 +162,7 @@ function Paso1({ o, onAvanzar }: { o: Oportunidad; onAvanzar: () => void }) {
       </div>
       {o.estado === "Identificada" && (
         <div className="md:col-span-2">
-          <button onClick={onAvanzar} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>Pasar a evaluación →</button>
+          <Button variant="ghost" onClick={onAvanzar} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>Pasar a evaluación →</Button>
         </div>
       )}
     </div>
@@ -166,15 +171,16 @@ function Paso1({ o, onAvanzar }: { o: Oportunidad; onAvanzar: () => void }) {
 
 // ============= Paso 2: Evaluar =============
 function Paso2({ o, clienteId, rol, estudio, setEstudio, onAvanzar }: { o: Oportunidad; clienteId: string; rol: string; estudio: boolean; setEstudio: (v: boolean) => void; onAvanzar: () => void }) {
-  const db = useDb();
-  const c = clienteDe(db, clienteId)!;
+  const db = useVisibleDb();
+  const c = clienteDe(db, clienteId);
+  if(!c)return null;
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="rounded-xl border bg-card p-5">
         <h3 className="section-title mb-3">Histórico de la entidad (desde su Vista 360°)</h3>
         <div className="space-y-2 text-sm">
           {c.proyectos.map((p) => <div key={p.nombre} className="flex justify-between border-b py-1.5 last:border-0"><span className="font-medium">{p.nombre}</span><span className="text-muted-foreground">{p.estado}</span></div>)}
-          <div className="flex justify-between py-1.5"><span className="font-medium">Costo histórico</span><span>{c.costo}</span></div>
+          <div className="flex justify-between py-1.5"><span className="font-medium">Valor contratado histórico</span><span>{c.costo}</span></div>
           <div className="flex justify-between py-1.5"><span className="font-medium">Utilidad histórica</span><span>{c.utilidad}</span></div>
         </div>
         <h4 className="section-title mb-2 mt-4">Equipo que intervino</h4>
@@ -188,9 +194,9 @@ function Paso2({ o, clienteId, rol, estudio, setEstudio, onAvanzar }: { o: Oport
             <p className="text-muted-foreground">{a.experiencia}</p>
           </div>
         ))}
-        <button onClick={() => setEstudio(true)} className={`${btn} mt-4 border border-primary text-primary hover:bg-accent`}>
+        <Button variant="ghost" onClick={() => setEstudio(true)} className={`${btn} mt-4 border border-primary text-primary hover:bg-accent`}>
           <LineChart className="h-4 w-4" /> Estudio de mercado
-        </button>
+        </Button>
       </div>
       <div className="rounded-xl border bg-card p-5 md:col-span-2">
         <h3 className="section-title mb-3">Decisión</h3>
@@ -198,12 +204,12 @@ function Paso2({ o, clienteId, rol, estudio, setEstudio, onAvanzar }: { o: Oport
           <p className="text-sm">Decisión registrada: <strong>{o.decision}</strong></p>
         ) : (
           <div className="flex flex-wrap gap-3">
-            <button onClick={() => { decidirParticipacion(o.id, "Participar", rol); toast.success("Decisión: participar"); }} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>Participar</button>
-            <button onClick={() => { decidirParticipacion(o.id, "No participar", rol); toast.info("Decisión: no participar"); }} className={`${btn} border border-primary text-primary hover:bg-accent`}>No participar</button>
+            <Button variant="ghost" onClick={() => { decidirParticipacion(o.id, "Participar", rol); toast.success("Decisión: participar"); }} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>Participar</Button>
+            <Button variant="ghost" onClick={() => { decidirParticipacion(o.id, "No participar", rol); toast.info("Decisión: no participar"); }} className={`${btn} border border-primary text-primary hover:bg-accent`}>No participar</Button>
           </div>
         )}
         {o.estado === "En evaluación" && o.decision === "Participar" && (
-          <button onClick={onAvanzar} className={`${btn} mt-4 bg-primary text-primary-foreground hover:bg-wine`}>Siguiente paso: Asignar y preparar →</button>
+          <Button variant="ghost" onClick={onAvanzar} className={`${btn} mt-4 bg-primary text-primary-foreground hover:bg-wine`}>Siguiente paso: Asignar y preparar →</Button>
         )}
       </div>
     </div>
@@ -212,9 +218,11 @@ function Paso2({ o, clienteId, rol, estudio, setEstudio, onAvanzar }: { o: Oport
 
 // ============= Paso 3: Asignar y preparar =============
 function Paso3({ o, rol, carga, bloqueado, aprobPendientes, onAvanzar }: { o: Oportunidad; rol: string; carga: Record<string, number>; bloqueado: boolean; aprobPendientes: number; onAvanzar: () => void }) {
-  const [a, setA] = useState({ tarea: "", area: AREAS[0]!, responsable: RESPONSABLES_POR_AREA[AREAS[0]!]![0]!, fecha: "", notificar: true });
+  const db=useVisibleDb();
+  const session=useSession();
+  const [a, setA] = useState({ tarea: "", area: AREAS[0] ?? "Comercial", responsable: db.usuarios[0]?.nombre ?? session?.nombre ?? "", fecha: "", notificar: true });
   const [comentarios, setComentarios] = useState<Record<string, string>>({});
-  const puedeAprobar = rol === "Gerente de área" || rol === "Gerencia Administrativa";
+  const puedeAprobar = rol === "Administrador" || rol === "Gerente de área" || rol === "Gerencia Administrativa";
 
   const asignar = (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,7 +241,7 @@ function Paso3({ o, rol, carga, bloqueado, aprobPendientes, onAvanzar }: { o: Op
           <h3 className="section-title mb-3">Matriz de tareas</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="text-left text-muted-foreground">{["Tarea", "Área", "Responsable", "Límite", "Estado"].map((h) => <th key={h} className="pb-2 pr-3 font-display uppercase tracking-wider">{h}</th>)}</tr></thead>
+              <thead><tr className="text-left text-muted-foreground">{["Tarea", "Área", "Responsable", "Límite", "Estado"].map((h) => <th key={h} className="pb-2 pr-3 font-display uppercase tracking-normal">{h}</th>)}</tr></thead>
               <tbody>
                 {o.tareas.map((t) => (
                   <tr key={t.id} className="border-t">
@@ -260,20 +268,20 @@ function Paso3({ o, rol, carga, bloqueado, aprobPendientes, onAvanzar }: { o: Op
             <div className="grid gap-3 sm:grid-cols-2">
               <div><label className={label}>Tarea</label><input className="field" value={a.tarea} onChange={(e) => setA({ ...a, tarea: e.target.value })} /></div>
               <div><label className={label}>Área</label>
-                <select className="field" value={a.area} onChange={(e) => { const area = e.target.value; setA({ ...a, area, responsable: RESPONSABLES_POR_AREA[area]![0]! }); }}>
+                <select className="field" value={a.area} onChange={(e) => { const area = e.target.value; setA({ ...a, area, responsable: db.usuarios.find((u)=>u.area===area)?.nombre ?? session?.nombre ?? "" }); }}>
                   {AREAS.map((x) => <option key={x}>{x}</option>)}
                 </select>
               </div>
               <div><label className={label}>Responsable</label>
                 <select className="field" value={a.responsable} onChange={(e) => setA({ ...a, responsable: e.target.value })}>
-                  {RESPONSABLES_POR_AREA[a.area]!.map((x) => <option key={x}>{x}</option>)}
+                  {[...new Set([session?.nombre??"",...db.usuarios.filter((u)=>u.area===a.area).map((u)=>u.nombre)].filter(Boolean))].map((x) => <option key={x}>{x}</option>)}
                 </select>
               </div>
               <div><label className={label}>Fecha límite</label><input type="date" className="field" value={a.fecha} onChange={(e) => setA({ ...a, fecha: e.target.value })} /></div>
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="h-4 w-4 accent-primary" checked={a.notificar} onChange={(e) => setA({ ...a, notificar: e.target.checked })} /> Notificar por correo y en la app</label>
-              <button className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-wine">Asignar</button>
+              <Button variant="ghost" className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-wine">Asignar</Button>
             </div>
           </form>
         </div>
@@ -303,10 +311,10 @@ function Paso3({ o, rol, carga, bloqueado, aprobPendientes, onAvanzar }: { o: Op
                 {ap.estado !== "Pendiente" && <p className="text-sm text-muted-foreground">{ap.estado} por {ap.por} el {ap.fecha}{ap.comentario ? ` · “${ap.comentario}”` : ""}</p>}
               </div>
               {ap.estado === "Pendiente" ? (
-                puedeAprobar ? (
+                (puedeAprobar && (rol === "Administrador" || (ap.aprobadorRol ?? (ap.tipo === "Aprobación técnica" ? "Gerente de área" : "Gerencia Administrativa")) === rol)) ? (
                   <div className="flex gap-2">
-                    <button onClick={() => { resolverAprobacion(o.id, ap.id, "Aprobada", rol, comentarios[ap.id] ?? ""); toast.success(`${ap.tipo} aprobada`); }} className="rounded-md bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-wine">Aprobar</button>
-                    <button onClick={() => { resolverAprobacion(o.id, ap.id, "Rechazada", rol, comentarios[ap.id] ?? ""); toast.error(`${ap.tipo} rechazada`); }} className="rounded-md border border-primary px-4 py-1.5 text-sm font-semibold text-primary hover:bg-accent">Rechazar</button>
+                    <Button variant="ghost" onClick={() => { resolverAprobacion(o.id, ap.id, "Aprobada", rol, comentarios[ap.id] ?? ""); toast.success(`${ap.tipo} aprobada`); }} className="rounded-md bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-wine">Aprobar</Button>
+                    <Button variant="ghost" onClick={() => { resolverAprobacion(o.id, ap.id, "Rechazada", rol, comentarios[ap.id] ?? ""); toast.error(`${ap.tipo} rechazada`); }} className="rounded-md border border-primary px-4 py-1.5 text-sm font-semibold text-primary hover:bg-accent">Rechazar</Button>
                   </div>
                 ) : <span className="rounded-full bg-warning-soft px-3 py-1 text-xs font-semibold text-warning-foreground">Pendiente de {ap.tipo === "Aprobación de presupuesto" ? "Gerencia Administrativa" : "Gerente de área"}</span>
               ) : (
@@ -322,9 +330,9 @@ function Paso3({ o, rol, carga, bloqueado, aprobPendientes, onAvanzar }: { o: Op
 
       {o.estado === "En preparación" && (
         <div className="flex items-center gap-3">
-          <button onClick={onAvanzar} disabled={bloqueado} className={`${btn} ${bloqueado ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-wine"}`}>
+          <Button variant="ghost" onClick={onAvanzar} disabled={bloqueado} className={`${btn} ${bloqueado ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-wine"}`}>
             {bloqueado && <Lock className="h-4 w-4" />} Siguiente paso: Seguir etapas →
-          </button>
+          </Button>
           {bloqueado && <p className="text-sm font-semibold text-destructive">Faltan {aprobPendientes} aprobación{aprobPendientes !== 1 && "es"} por resolver.</p>}
         </div>
       )}
@@ -366,11 +374,11 @@ function Paso4({ o, onAbrirPanel, onAvanzar }: { o: Oportunidad; onAbrirPanel: (
         </div>
       </div>
       <div className="flex flex-wrap gap-3">
-        <button onClick={onAbrirPanel} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>
+        <Button variant="ghost" onClick={onAbrirPanel} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>
           <MessageSquarePlus className="h-4 w-4" /> Registrar interacción
-        </button>
+        </Button>
         {(o.estado === "Observaciones" || o.estado === "Propuesta" || o.estado === "Presentada") && (
-          <button onClick={onAvanzar} className={`${btn} border border-primary text-primary hover:bg-accent`}>Marcar como ganada →</button>
+          <Button variant="ghost" onClick={onAvanzar} className={`${btn} border border-primary text-primary hover:bg-accent`}>Marcar como ganada →</Button>
         )}
       </div>
     </div>
@@ -379,6 +387,8 @@ function Paso4({ o, onAbrirPanel, onAvanzar }: { o: Oportunidad; onAbrirPanel: (
 
 // ============= Paso 5: Ejecutar y gestionar =============
 function Paso5({ o, clienteId, pqr }: { o: Oportunidad; clienteId: string; pqr: { id: string; asunto: string; estado: string; ans: string; fuente: string }[] }) {
+  const db=useVisibleDb();
+  const last=db.encuestas.filter((e)=>e.clienteId===clienteId).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
   if (o.estado !== "Ganada" || !o.proyecto) {
     return <p className="rounded-xl border bg-card p-5 text-muted-foreground">La oportunidad aún no está ganada. Cuando se marque como Ganada, aquí aparecerá el proyecto vinculado.</p>;
   }
@@ -410,11 +420,10 @@ function Paso5({ o, clienteId, pqr }: { o: Oportunidad; clienteId: string; pqr: 
         </div>
         <div className="rounded-xl border bg-card p-5">
           <h3 className="section-title mb-3">Última encuesta de satisfacción</h3>
-          <p className="font-display text-4xl font-bold text-primary">4.6 / 5</p>
-          <p className="mt-1 text-sm text-muted-foreground">Octubre 2026 · “Buena respuesta de la mesa de ayuda, mejorar tiempos de escalamiento.”</p>
+          <p className="font-display text-4xl font-bold text-primary">{last?`${last.nota} / 5`:"—"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{last?`${last.fecha} · ${last.comentario}`:"Sin respuestas de Forms"}</p>
           <h3 className="section-title mb-2 mt-5">Próximos compromisos</h3>
-          <p className="text-sm">Informe mensual de avance · 15/11/2026</p>
-          <p className="text-sm">Comité de seguimiento · 20/11/2026</p>
+          {db.pendientes.filter((p)=>p.clienteId===clienteId).map((p)=><p key={p.id} className="text-sm">{p.texto} · {p.fecha}</p>)}
         </div>
       </div>
       <Link to="/clientes/$id" params={{ id: clienteId }} className={`${btn} bg-primary text-primary-foreground hover:bg-wine`}>Ver cliente 360 →</Link>

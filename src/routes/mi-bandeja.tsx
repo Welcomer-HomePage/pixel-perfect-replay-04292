@@ -1,6 +1,8 @@
+import { Button } from "@/components/ui/button";
+import { useVisibleDb, useSession, isAdmin } from "@/lib/auth";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, Migas } from "@/components/AppShell";
-import { EQUIPO_ESPECIALIZADO, clienteDe, cop, opDe, useDb, useRol, venceHoy } from "@/lib/data";
+import { clienteDe, cop, opDe, useRol, venceHoy } from "@/lib/data";
 
 export const Route = createFileRoute("/mi-bandeja")({
   head: () => ({
@@ -9,6 +11,8 @@ export const Route = createFileRoute("/mi-bandeja")({
       { name: "description", content: "Tareas, aprobaciones, propuestas por vencer y PQR pendientes según tu rol." },
       { property: "og:title", content: "Mi bandeja · TCI" },
       { property: "og:description", content: "Pendientes del rol seleccionado." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: MiBandeja,
@@ -17,8 +21,9 @@ export const Route = createFileRoute("/mi-bandeja")({
 type Item = { texto: string; detalle: string; opId: string; paso: number };
 
 function MiBandeja() {
-  const db = useDb();
+  const db = useVisibleDb();
   const rol = useRol();
+  const session=useSession();
   const items: Item[] = [];
 
   if (rol === "Líder Comercial") {
@@ -27,7 +32,7 @@ function MiBandeja() {
   }
   if (rol === "Gerente de área" || rol === "Gerencia Administrativa") {
     db.oportunidades.forEach((o) => o.aprobaciones.filter((a) => a.estado === "Pendiente").forEach((a) => {
-      if (rol === "Gerencia Administrativa" && a.tipo !== "Aprobación de presupuesto") return;
+      if ((a.aprobadorRol ?? (a.tipo === "Aprobación técnica" ? "Gerente de área" : "Gerencia Administrativa")) !== rol) return;
       items.push({ texto: `${a.tipo}: ${o.proceso}`, detalle: `Solicita ${a.solicitante} · ${clienteDe(db, o.clienteId)?.nombre}`, opId: o.id, paso: 3 });
     }));
   }
@@ -36,31 +41,31 @@ function MiBandeja() {
       const op = p.oportunidadId ? opDe(db, p.oportunidadId) : db.oportunidades.find((o) => o.clienteId === p.clienteId && o.estado === "Ganada");
       if (op) items.push({ texto: `PQR por atender: ${p.asunto}`, detalle: `${p.id} · ${clienteDe(db, p.clienteId)?.nombre} · ANS: ${p.ans}`, opId: op.id, paso: 5 });
     });
-    db.oportunidades.forEach((o) => o.tareas.filter((t) => t.responsable === "Juan Martínez" && t.estado !== "Listo").forEach((t) =>
+    db.oportunidades.forEach((o) => o.tareas.filter((t) => (isAdmin(session) || t.responsable === session?.nombre) && t.estado !== "Listo").forEach((t) =>
       items.push({ texto: `Tarea asignada: ${t.tarea}`, detalle: `${o.proceso} · Límite ${t.limite.split("-").reverse().join("/")}`, opId: o.id, paso: 3 })));
   }
 
   return (
     <AppShell>
       <Migas items={[{ label: "Tablero", to: "/" }, { label: "Mi bandeja" }]} />
-      <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-wine">Mi bandeja</h1>
-      <p className="text-muted-foreground">Pendientes del rol <strong>{rol}</strong>. Cada ítem abre el paso exacto de la oportunidad.</p>
+      <h1 className="font-display text-3xl font-bold uppercase tracking-normal text-wine">{rol === "Recursos Humanos" ? "Disponibilidad del equipo especializado" : "Mi bandeja"}</h1>
+      <p className="text-muted-foreground">Pendientes del rol <strong>{rol}</strong>. </p>
 
       {rol === "Recursos Humanos" ? (
         <div className="mt-6 overflow-x-auto rounded-xl border bg-card">
           <table className="w-full text-sm">
             <thead className="bg-primary text-left text-primary-foreground">
-              <tr>{["Nombre", "Perfil", "Experiencia", "Estado"].map((h) => <th key={h} className="px-4 py-3 font-display uppercase tracking-wider">{h}</th>)}</tr>
+              <tr>{["Nombre", "Perfil", "Experiencia", "Estado"].map((h) => <th key={h} className="px-4 py-3 font-display uppercase tracking-normal">{h}</th>)}</tr>
             </thead>
             <tbody>
-              {EQUIPO_ESPECIALIZADO.map((p) => (
-                <tr key={p.nombre} className="border-t">
-                  <td className="px-4 py-3 font-semibold">{p.nombre}</td><td className="px-4 py-3">{p.perfil}</td><td className="px-4 py-3">{p.experiencia}</td>
-                  <td className="px-4 py-3">{p.asignado
-                    ? <span className="rounded-full bg-warning-soft px-2.5 py-0.5 text-xs font-semibold text-warning-foreground">Asignado · {p.asignado}</span>
+              {db.equipo.map((p) => { const project=db.proyectos.find((x)=>x.id===p.proyectoId); const assigned=project && project.estado!=="Cerrado"; return (
+                <tr key={p.id} className="border-t">
+                  <td className="px-4 py-3 font-semibold">{p.nombre}</td><td className="px-4 py-3">{p.perfil}</td><td className="px-4 py-3">{p.experiencia} años</td>
+                  <td className="px-4 py-3">{assigned
+                    ? <span className="rounded-full bg-warning-soft px-2.5 py-0.5 text-xs font-semibold text-warning-foreground">Asignado · {project?.nombre}</span>
                     : <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-semibold text-success">Libre</span>}</td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

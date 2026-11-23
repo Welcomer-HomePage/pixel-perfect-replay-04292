@@ -1,14 +1,15 @@
+import Papa from "papaparse";
 import { useSyncExternalStore } from "react";
 
 // ============= Tipos =============
-export type EstadoCliente = "Activo" | "En seguimiento";
+export type EstadoCliente = "Activo" | "En seguimiento" | "Inactivo";
 export type TipoCliente = "Financiero" | "Público" | "Mixto" | "Privado";
 export type EstadoOp =
   | "Identificada" | "En evaluación" | "En preparación"
-  | "Observaciones" | "Propuesta" | "Presentada" | "Ganada";
+  | "Observaciones" | "Propuesta" | "Presentada" | "Ganada" | "Perdida";
 
 export type Tarea = { id: string; tarea: string; area: string; responsable: string; limite: string; estado: "Pendiente" | "En curso" | "Listo" };
-export type Aprobacion = { id: string; tipo: "Aprobación técnica" | "Aprobación de presupuesto"; estado: "Pendiente" | "Aprobada" | "Rechazada"; solicitante: string; por?: string; fecha?: string; comentario?: string };
+export type Aprobacion = { id: string; tipo: "Aprobación técnica" | "Aprobación de presupuesto"; estado: "Pendiente" | "Aprobada" | "Rechazada"; solicitante: string; por?: string; fecha?: string; comentario?: string; aprobadorRol?: Rol };
 export type Fase = { nombre: "Observaciones" | "Propuesta" | "Presentada"; fecha: string; respuesta: string; observaciones: string };
 export type Proyecto = { lider: string; supervisor: string; costo: string; utilidad: string; avance: number };
 export type HistorialItem = { fecha: string; quien: string; texto: string };
@@ -16,7 +17,7 @@ export type HistorialItem = { fecha: string; quien: string; texto: string };
 export type Oportunidad = {
   id: string; clienteId: string; proceso: string; valor: number;
   estado: EstadoOp; responsable: string; vence: string;
-  fuente: "SECOP II" | "Portal propio"; requisitos: "Estándar" | "Dirigido";
+  fuente: "SECOP II" | "Portal propio" | "Venta directa" | "Otro"; observaciones?: string;
   pliegos: string[]; aliados: { nombre: string; experiencia: string }[];
   decision?: "Participar" | "No participar";
   tareas: Tarea[]; aprobaciones: Aprobacion[]; fases: Fase[];
@@ -29,7 +30,7 @@ export type Interaccion = {
   participantes: string; descripcion: string;
 };
 export type Pendiente = { id: string; clienteId: string; oportunidadId?: string; fecha: string; texto: string };
-export type Pqr = { id: string; clienteId: string; oportunidadId?: string; asunto: string; estado: "Abierta" | "En gestión" | "Cerrada"; ans: string; fuente: string };
+export type Pqr = { id: string; clienteId: string; oportunidadId?: string; asunto: string; estado: "Abierta" | "En gestión" | "Cerrada"; ans: string; fuente: string; tipo_identificacion?: "NIT" | "CC" | "CE" | "Pasaporte" | "Otro"; numero_identificacion?: string; fecha?: string; ans_horas?: number; responsable?: string };
 export type Notificacion = { id: string; rol: Rol; texto: string; oportunidadId: string; paso: number; leida: boolean };
 
 export type Cliente = {
@@ -44,19 +45,27 @@ export type Cliente = {
 export type Db = {
   clientes: Cliente[]; oportunidades: Oportunidad[]; interacciones: Interaccion[];
   pendientes: Pendiente[]; pqr: Pqr[]; notificaciones: Notificacion[];
+  proyectos: Contrato[]; equipo: Persona[]; encuestas: Encuesta[]; usuarios: Usuario[];
+  aliados: { id: string; nombre: string; experiencia: string; tipo_cliente_afin: string; proyectos_conjuntos: number }[];
+  origen: { archivo: string; fecha: string; experiencia: boolean };
+  syncs: Record<IntegracionId,string>;
+};
+export type Contrato = {
+  id: string; clienteId: string; oportunidadId: string; nombre: string; estado: "En ejecución" | "En cierre" | "Cerrado";
+  lider: string; supervisor: string; costo_mcop: number | null; utilidad_pct: number | null;
+  fecha_inicio: string; fecha_fin: string; no_contrato: string; linea_servicio: string; objeto: string;
+  porcentaje_participacion: number; valor_contrato_cop: number; valor_smmlv: number | null; duracion: number;
+  codigos_unspsc: string; actividades: string;
+};
+export type Persona = { id: string; proyectoId: string; nombre: string; perfil: string; experiencia: number };
+export type Encuesta = { id: string; clienteId: string; proyectoId: string; fecha: string; nota: number; comentario: string; canal: "Forms" };
+export type Usuario = { id: string; nombre: string; cargo: string; rol: Rol; area: string
 };
 
 // ============= Constantes =============
-export const USUARIOS = ["Luisa Pérez", "Juan Martínez", "Carlos Gómez", "Andrea Rojas"];
 export const AREAS = ["Área técnica", "Área financiera", "Área jurídica", "Comercial"];
-export const RESPONSABLES_POR_AREA: Record<string, string[]> = {
-  "Área técnica": ["Juan Martínez", "Andrea Rojas"],
-  "Área financiera": ["Carlos Gómez"],
-  "Área jurídica": ["Carlos Gómez", "Andrea Rojas"],
-  Comercial: ["Luisa Pérez"],
-};
 export const ROLES = ["Líder Comercial", "Gerente de área", "Gerencia Administrativa", "Recursos Humanos", "Líder de proyecto"] as const;
-export type Rol = (typeof ROLES)[number];
+export type Rol = (typeof ROLES)[number] | "Administrador";
 
 export const ETAPAS = [
   { n: 1, nombre: "Identificar", estados: ["Identificada"] as EstadoOp[] },
@@ -65,7 +74,7 @@ export const ETAPAS = [
   { n: 4, nombre: "Seguir etapas", estados: ["Observaciones", "Propuesta", "Presentada"] as EstadoOp[] },
   { n: 5, nombre: "Ejecutar", estados: ["Ganada"] as EstadoOp[] },
 ];
-export const etapaDe = (estado: EstadoOp): number => ETAPAS.find((e) => e.estados.includes(estado))!.n;
+export const etapaDe = (estado: EstadoOp): number => ETAPAS.find((e) => e.estados.includes(estado))?.n ?? 4;
 
 export const EQUIPO_ESPECIALIZADO = [
   { nombre: "Juan Martínez", perfil: "Líder de proyecto", experiencia: "10 años", asignado: "Bancolombia · Fábrica de software" },
@@ -75,13 +84,6 @@ export const EQUIPO_ESPECIALIZADO = [
   { nombre: "Felipe Herrera", perfil: "Ingeniero DevOps", experiencia: "7 años", asignado: "" },
   { nombre: "Natalia Suárez", perfil: "Experta en ciberseguridad", experiencia: "9 años", asignado: "" },
 ];
-export const FUENTES = [
-  { nombre: "ISSA", sync: "02/11/2026 18:40" },
-  { nombre: "Microsoft Forms", sync: "02/11/2026 09:15" },
-  { nombre: "Siigo", sync: "01/11/2026 23:00" },
-  { nombre: "SharePoint", sync: "02/11/2026 17:05" },
-];
-
 // ============= Datos de ejemplo =============
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 const fmt = (iso: string) => iso.split("-").reverse().join("/");
@@ -104,7 +106,7 @@ const cli = (p: Partial<Cliente> & Pick<Cliente, "id" | "nombre" | "nit" | "tipo
 });
 
 const op = (p: Partial<Oportunidad> & Pick<Oportunidad, "id" | "clienteId" | "proceso" | "valor" | "estado" | "vence">): Oportunidad => ({
-  responsable: "Luisa Pérez", fuente: "SECOP II", requisitos: "Estándar",
+  responsable: "Luisa Pérez", fuente: "SECOP II",
   pliegos: ["Pliego de condiciones.pdf", "Anexo técnico.xlsx"],
   aliados: [
     { nombre: "Softtek Andina", experiencia: "3 proyectos conjuntos en sector financiero" },
@@ -131,7 +133,7 @@ function seed(): Db {
   ];
 
   const oportunidades: Oportunidad[] = [
-    op({ id: "op-idu", clienteId: "idu", proceso: "Software misional", valor: 850, estado: "Identificada", vence: hoy, fuente: "Portal propio", requisitos: "Dirigido" }),
+    op({ id: "op-idu", clienteId: "idu", proceso: "Software misional", valor: 850, estado: "Identificada", vence: hoy, fuente: "Portal propio" }),
     op({ id: "op-victimas", clienteId: "victimas", proceso: "Analítica de datos", valor: 320, estado: "Identificada", vence: "2026-11-15" }),
     op({ id: "op-bbva-fab", clienteId: "bbva", proceso: "Fábrica de software 2027", valor: 540, estado: "En evaluación", vence: "2026-11-10", fuente: "Portal propio" }),
     op({ id: "op-fna-mesa", clienteId: "fna", proceso: "Mesa de ayuda", valor: 260, estado: "En preparación", vence: hoy,
@@ -174,8 +176,11 @@ function seed(): Db {
   ];
 
   return {
-    clientes,
-    oportunidades,
+    ...emptyDb(), clientes, oportunidades,
+    origen: { archivo: "Datos de ejemplo", fecha: new Date().toISOString(), experiencia: false },
+    equipo: EQUIPO_ESPECIALIZADO.map((p, i) => ({ id: `EQ-${i}`, proyectoId: "", nombre: p.nombre, perfil: p.perfil, experiencia: parseInt(p.experiencia) })),
+    usuarios: demoUsuarios(),
+    proyectos: oportunidades.filter((o) => o.proyecto).map((o, i) => ({ id: `P-${i + 1}`, clienteId: o.clienteId, oportunidadId: o.id, nombre: o.proceso, estado: "En ejecución" as const, lider: o.proyecto?.lider ?? "", supervisor: o.proyecto?.supervisor ?? "", costo_mcop: o.valor * .8, utilidad_pct: 18, fecha_inicio: "2026-01-01", fecha_fin: o.vence, no_contrato: "", linea_servicio: o.proceso, objeto: o.proceso, porcentaje_participacion: 1, valor_contrato_cop: o.valor * 1e6, valor_smmlv: 0, duracion: 12, codigos_unspsc: "", actividades: "" })),
     interacciones: [
       { id: "i1", clienteId: "bancolombia", oportunidadId: "op-banco-ren", tipo: "Reunión", fecha: "2026-10-28", responsable: "Luisa Pérez", participantes: "Gerencia TI", descripcion: "Revisión de avances del proyecto y nuevas necesidades." },
       { id: "i2", clienteId: "idu", oportunidadId: "op-idu-obs", tipo: "Llamada", fecha: "2026-10-30", responsable: "Luisa Pérez", participantes: "Subdirección de contratación", descripcion: "Aclaraciones sobre el pliego de la plataforma de reportes." },
@@ -200,25 +205,39 @@ function seed(): Db {
 }
 
 // ============= Store con persistencia =============
-const KEY = "tci-db-v2";
-const seedDb = seed();
-let db: Db = seedDb;
-if (typeof window !== "undefined") {
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) db = JSON.parse(raw) as Db;
-  } catch { /* datos corruptos: se usa la semilla */ }
+export function demoUsuarios(): Usuario[] {
+  return ROLES.map((rol, i) => ({ id: `U-${i}`, nombre: ["Luisa Pérez", "Andrea Rojas", "Carlos Gómez", "Diana Castro", "Juan Martínez"][i] ?? rol, cargo: rol, rol, area: i === 0 ? "Comercial" : "Área técnica" }));
 }
-
+export function emptyDb(): Db {
+  return { clientes: [], oportunidades: [], proyectos: [], equipo: [], encuestas: [], usuarios: [], aliados: [], interacciones: [], pendientes: [], pqr: [], notificaciones: [], syncs: {issa:"Sin sincronizar",forms:"Sin sincronizar",siigo:"Sin sincronizar",sharepoint:"Sin sincronizar",portales:"Sin sincronizar"}, origen: { archivo: "Sin archivo", fecha: "", experiencia: false } };
+}
+const KEY = "tci-db-v3";
+const serverDb = emptyDb();
+let db: Db = serverDb;
 const listeners = new Set<() => void>();
 const subscribe = (l: () => void) => { listeners.add(l); return () => listeners.delete(l); };
+export const getDb = () => db;
 const emit = () => {
-  if (typeof window !== "undefined") {
-    try { window.localStorage.setItem(KEY, JSON.stringify(db)); } catch { /* sin espacio */ }
-  }
+  try { if (typeof window !== "undefined") window.localStorage.setItem(KEY, JSON.stringify(db)); } catch { throw new Error("No hay espacio en este navegador para guardar el archivo."); }
   listeners.forEach((l) => l());
 };
-export const useDb = () => useSyncExternalStore(subscribe, () => db, () => seedDb);
+export function refreshStore() { listeners.forEach((l) => l()); }
+export const useDb = () => useSyncExternalStore(subscribe, () => db, () => serverDb);
+export function deriveDb(d: Db): Db {
+  return { ...d, clientes: d.clientes.map((c) => {
+    const ps = d.proyectos.filter((p) => p.clienteId === c.id);
+    const cost = ps.some((p) => p.costo_mcop !== null) ? ps.reduce((a, p) => a + (p.costo_mcop ?? 0), 0) : ps.reduce((a, p) => a + p.valor_contrato_cop / 1e6, 0);
+    return { ...c, costo: ps.length ? cop(cost) : (c.costo || "—"), historicos: ps.length, proyectos: ps.map((p) => ({ nombre: p.nombre, estado: p.estado })), lineas: [...new Set(ps.flatMap((p) => p.linea_servicio.split("; ")).filter(Boolean))], equipo: d.equipo.filter((e) => ps.some((p) => p.id === e.proyectoId)).map((e) => ({ nombre: e.nombre, perfil: `${e.perfil} · ${e.experiencia} años` })) };
+  }) };
+}
+export function replaceDb(next: Db) { const prev = db; db = deriveDb(next); try { emit(); } catch (e) { db = prev; throw e; } }
+export function restoreDemo() { replaceDb(seed()); }
+export async function hydrateDb() {
+  if (typeof window === "undefined") return;
+  try { const raw = window.localStorage.getItem(KEY); if (raw) { const saved=JSON.parse(raw) as Db; db = deriveDb({...saved,syncs:saved.syncs??emptyDb().syncs}); refreshStore(); return; } } catch { /* archivo local inválido */ }
+  const initial = await import("./initial-data.json");
+  replaceDb(initial.default as Db);
+}
 
 // ============= Derivados =============
 export const clienteDe = (d: Db, id: string) => d.clientes.find((c) => c.id === id);
@@ -249,15 +268,19 @@ export function avanzarEtapa(opId: string, quien: string) {
     const etapa = etapaDe(o.estado);
     const siguiente: Record<number, EstadoOp> = { 1: "En evaluación", 2: "En preparación", 3: "Observaciones", 4: "Ganada" };
     const nuevo = siguiente[etapa];
-    if (!nuevo) return o;
-    const act: Oportunidad = { ...o, estado: nuevo, historial: [...o.historial, historial(quien, `Avanzó a «${ETAPAS[etapa]!.nombre}» (estado: ${nuevo})`)] };
+    if (!nuevo || etapa === 3 && o.aprobaciones.some((a)=>a.estado==="Pendiente")) return o;
+    const act: Oportunidad = { ...o, estado: nuevo, historial: [...o.historial, historial(quien, `Avanzó a «${ETAPAS[etapa]?.nombre ?? nuevo}» (estado: ${nuevo})`)] };
     if (nuevo === "Ganada" && !act.proyecto) {
-      act.proyecto = { lider: "Juan Martínez", supervisor: "Carlos Gómez", costo: cop(Math.round(act.valor * 0.8)), utilidad: "+18%", avance: 0 };
+      act.proyecto = { lider: clienteDe(db,act.clienteId)?.lider ?? "", supervisor: clienteDe(db,act.clienteId)?.supervisor ?? "", costo: "—", utilidad: "—", avance: 0 };
       act.historial.push(historial(quien, "Oportunidad ganada: se creó el proyecto vinculado"));
     }
     return act;
   }) };
   const o = opDe(db, opId);
+  if(o?.estado === "Ganada" && !db.proyectos.some((p)=>p.oportunidadId===o.id)) {
+    db={...db,proyectos:[...db.proyectos,{id:`P-${o.id}`,clienteId:o.clienteId,oportunidadId:o.id,nombre:o.proceso,estado:"En ejecución",lider:o.proyecto?.lider??"",supervisor:o.proyecto?.supervisor??"",costo_mcop:null,utilidad_pct:null,fecha_inicio:hoyISO(),fecha_fin:"",no_contrato:"",linea_servicio:"",objeto:o.proceso,porcentaje_participacion:1,valor_contrato_cop:o.valor*1e6,valor_smmlv:null,duracion:0,codigos_unspsc:"",actividades:""}]};
+    db=deriveDb(db);
+  }
   if (o?.estado === "Ganada") {
     db = { ...db, clientes: db.clientes.map((c) => (c.id === o.clienteId && c.estado !== "Activo" ? { ...c, estado: "Activo" as EstadoCliente } : c)) };
   }
@@ -273,7 +296,7 @@ export function decidirParticipacion(opId: string, decision: "Participar" | "No 
 export function asignarTarea(opId: string, t: Omit<Tarea, "id" | "estado">, notificar: boolean) {
   const nueva: Tarea = { ...t, id: crypto.randomUUID(), estado: "Pendiente" };
   db = { ...db, oportunidades: db.oportunidades.map((o) => o.id === opId
-    ? { ...o, tareas: [...o.tareas, nueva], historial: [...o.historial, historial("Luisa Pérez", `Tarea asignada a ${t.responsable}: ${t.tarea}`)] } : o) };
+    ? { ...o, tareas: [...o.tareas, nueva], historial: [...o.historial, historial(o.responsable, `Tarea asignada a ${t.responsable}: ${t.tarea}`)] } : o) };
   if (notificar) {
     const rol: Rol = t.area === "Comercial" ? "Líder Comercial" : "Gerente de área";
     const o = opDe(db, opId);
@@ -321,20 +344,15 @@ export function marcarNotificacionesLeidas(rol: Rol) {
 }
 
 export function importarOportunidades(): number {
-  const nuevas: Oportunidad[] = [
-    op({ id: `op-imp-${Date.now()}-1`, clienteId: "victimas", proceso: "Plataforma de atención", valor: 410, estado: "Identificada", vence: "2026-11-25", fuente: "Portal propio" }),
-    op({ id: `op-imp-${Date.now()}-2`, clienteId: "bbva", proceso: "Analítica de riesgo", valor: 290, estado: "Identificada", vence: "2026-11-22" }),
-  ].filter((n) => !db.oportunidades.some((o) => o.proceso === n.proceso && o.clienteId === n.clienteId));
-  if (nuevas.length) { db = { ...db, oportunidades: [...db.oportunidades, ...nuevas] }; emit(); }
-  return nuevas.length;
+  const client=db.clientes[0];if(!client)return 0;
+  const proceso=`Proceso simulado desde portal · ${client.nombre}`;
+  if(db.oportunidades.some((o)=>o.proceso===proceso))return 0;
+  const next:Oportunidad={id:`op-imp-${Date.now()}`,clienteId:client.id,proceso,valor:0,estado:"Identificada",vence:hoyISO(),fuente:"Portal propio",responsable:client.responsable,pliegos:[],aliados:[],tareas:[],aprobaciones:[],fases:[],historial:[]};
+  db={...db,oportunidades:[...db.oportunidades,next]};emit();return 1;
 }
 
 // ============= Rol =============
 let rol: Rol = "Líder Comercial";
-if (typeof window !== "undefined") {
-  const saved = window.localStorage.getItem("tci-rol");
-  if (saved && (ROLES as readonly string[]).includes(saved)) rol = saved as Rol;
-}
 const rolListeners = new Set<() => void>();
 export const useRol = () => useSyncExternalStore((l) => { rolListeners.add(l); return () => rolListeners.delete(l); }, () => rol, () => "Líder Comercial" as Rol);
 export function setRol(r: Rol) {
@@ -345,45 +363,35 @@ export function setRol(r: Rol) {
 
 // ============= Integraciones =============
 export type IntegracionId = "issa" | "forms" | "siigo" | "sharepoint" | "portales";
-const SYNC_KEY = "tci-sync-v1";
-let syncs: Record<IntegracionId, string> = {
-  issa: "02/11/2026 18:40", forms: "02/11/2026 09:15", siigo: "01/11/2026 23:00", sharepoint: "02/11/2026 17:05", portales: "30/10/2026 08:00",
-};
-if (typeof window !== "undefined") {
-  try { const r = window.localStorage.getItem(SYNC_KEY); if (r) syncs = { ...syncs, ...JSON.parse(r) }; } catch { /* ignorar */ }
-}
-const syncListeners = new Set<() => void>();
 const ahora = () => new Date().toLocaleString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "");
-const marcarSync = (id: IntegracionId) => {
-  syncs = { ...syncs, [id]: ahora() };
-  if (typeof window !== "undefined") window.localStorage.setItem(SYNC_KEY, JSON.stringify(syncs));
-  syncListeners.forEach((l) => l());
-};
-export const useSyncs = () => useSyncExternalStore((l) => { syncListeners.add(l); return () => syncListeners.delete(l); }, () => syncs, () => syncs);
+const marcarSync=(id:IntegracionId)=>{db={...db,syncs:{...db.syncs,[id]:ahora()}};emit();};
+export const useSyncs=()=>useDb().syncs;
 
 /** Simula una sincronización y modifica datos reales de la app. Devuelve un resumen. */
 export function sincronizar(id: IntegracionId): string {
   const rnd = (n: number) => Math.floor(Math.random() * n);
   let msg = "";
   if (id === "issa") {
-    const c = db.clientes[rnd(db.clientes.length)]!;
+    const c = db.clientes[rnd(db.clientes.length)];
+    if (!c) return "Aún no hay datos";
     const caso = `PQR-${Math.floor(Math.random() * 9000 + 1000)}`;
     db = { ...db, pqr: [...db.pqr, { id: caso, clienteId: c.id, asunto: "Incidente reportado en ISSA", estado: "Abierta", ans: "Vence en 48 h", fuente: "ISSA" }] };
     msg = `1 caso nuevo (${caso}) para ${c.nombre}`;
   } else if (id === "forms") {
-    const c = db.clientes[rnd(db.clientes.length)]!;
+    const c = db.clientes[rnd(db.clientes.length)];
+    if (!c) return "Aún no hay datos";
     const nota = (4 + Math.random()).toFixed(1);
-    db = { ...db, interacciones: [...db.interacciones, { id: `i-${Date.now()}`, clienteId: c.id, tipo: "Encuesta", fecha: hoyISO(), responsable: "Microsoft Forms", participantes: "Cliente", descripcion: `Encuesta de satisfacción recibida: ${nota}/5` }] };
+    db = { ...db, encuestas: [...db.encuestas, { id: `f-${Date.now()}`, clienteId: c.id, proyectoId: "", fecha: hoyISO(), nota: Number(nota), comentario: "Respuesta recibida de Forms (simulada)", canal: "Forms" }] };
     msg = `Encuesta ${nota}/5 de ${c.nombre}`;
   } else if (id === "siigo") {
-    db = { ...db, clientes: db.clientes.map((c) => {
-      const n = parseInt(c.costo.replace(/\D/g, "")) || 100;
-      return { ...c, costo: `$${n + rnd(20)} M`, utilidad: `+${8 + rnd(15)}%` };
-    }) };
-    msg = `Costos y utilidad actualizados en ${db.clientes.length} clientes`;
+    if(!db.proyectos.length)return "Sin proyectos para sincronizar";
+    db={...db,proyectos:db.proyectos.map((p)=>({...p,costo_mcop:(p.costo_mcop??p.valor_contrato_cop/1e6*.8)+rnd(20),utilidad_pct:8+rnd(15)}))};
+    db=deriveDb(db);
+    msg=`Costos y utilidad actualizados en ${db.proyectos.length} proyectos`;
   } else if (id === "sharepoint") {
     const ops = db.oportunidades.filter((o) => o.estado !== "Ganada");
-    const o = ops[rnd(ops.length)]!;
+    const o = ops[rnd(ops.length)];
+    if (!o) return "Sin oportunidades para sincronizar";
     const doc = `Adenda_${o.pliegos.length + 1}.pdf`;
     db = { ...db, oportunidades: db.oportunidades.map((x) => x.id === o.id ? { ...x, pliegos: [...x.pliegos, doc], historial: [...x.historial, { fecha: ahora(), quien: "SharePoint", texto: `Documento sincronizado: ${doc}` }] } : x) };
     msg = `${doc} agregado a ${o.proceso}`;
@@ -396,20 +404,21 @@ export function sincronizar(id: IntegracionId): string {
   return msg;
 }
 
-export const CSV_EJEMPLO = "entidad,proceso,valor,vence,fuente,requisitos\nIDU,Mantenimiento de software,420,2026-12-05,SECOP II,Estándar\nEcopetrol,Mesa de servicios TI,980,2026-12-12,Portal propio,Dirigido\n";
+export const CSV_EJEMPLO = "entidad,proceso,valor,vence,fuente,responsable\nIDU,Mantenimiento de software,420,2026-12-05,SECOP II,Luisa Pérez\nEcopetrol,Mesa de servicios TI,980,2026-12-12,Portal propio,Luisa Pérez\n";
 
-/** Importa licitaciones desde CSV (columnas: entidad, proceso, valor, vence, fuente, requisitos). */
+/** Importa licitaciones desde CSV (columnas: entidad, proceso, valor, vence, fuente, responsable). */
 export function importarCsv(texto: string): { creadas: number; errores: string[] } {
-  const lineas = texto.replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const parsed = Papa.parse<string[]>(texto, { skipEmptyLines: "greedy" });
+  if (parsed.errors.some((e) => e.code !== "UndetectableDelimiter")) return { creadas: 0, errores: parsed.errors.map((e) => e.message) };
+  const lineas = parsed.data;
   const errores: string[] = [];
   if (lineas.length < 2) return { creadas: 0, errores: ["El archivo no tiene filas de datos"] };
-  const sep = (lineas[0] ?? "").includes(";") ? ";" : ",";
-  const cab = (lineas[0] ?? "").split(sep).map((h) => h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+  const cab = (lineas[0] ?? []).map((h) => h.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
   const idx = (k: string) => cab.indexOf(k);
   for (const k of ["entidad", "proceso", "valor", "vence"]) if (idx(k) < 0) return { creadas: 0, errores: [`Falta la columna "${k}"`] };
   const nuevas: Oportunidad[] = [];
   lineas.slice(1).forEach((l, i) => {
-    const f = l.split(sep).map((x) => x.trim());
+    const f = l.map((x) => x.trim());
     const ent = f[idx("entidad")]?.toLowerCase() ?? "";
     const c = db.clientes.find((c) => c.nombre.toLowerCase() === ent || c.id === ent || c.nit === ent || c.nombre.toLowerCase().includes(ent));
     const valor = Number(f[idx("valor")]);
@@ -421,8 +430,8 @@ export function importarCsv(texto: string): { creadas: number; errores: string[]
     if (!/^\d{4}-\d{2}-\d{2}$/.test(vence)) { errores.push(`Fila ${i + 2}: fecha debe ser AAAA-MM-DD`); return; }
     if (db.oportunidades.some((o) => o.clienteId === c.id && o.proceso === proceso) || nuevas.some((o) => o.clienteId === c.id && o.proceso === proceso)) { errores.push(`Fila ${i + 2}: ya existe`); return; }
     const fuente = idx("fuente") >= 0 && f[idx("fuente")]?.toLowerCase().includes("propio") ? "Portal propio" : "SECOP II";
-    const requisitos = idx("requisitos") >= 0 && f[idx("requisitos")]?.toLowerCase().startsWith("dirig") ? "Dirigido" : "Estándar";
-    nuevas.push(op({ id: `op-csv-${Date.now()}-${i}`, clienteId: c.id, proceso, valor, estado: "Identificada", vence, fuente, requisitos }));
+    const responsable = f[idx("responsable")] || "";
+    nuevas.push(op({ id: `op-csv-${Date.now()}-${i}`, clienteId: c.id, proceso, valor, estado: "Identificada", vence, fuente, responsable }));
   });
   if (nuevas.length) { db = { ...db, oportunidades: [...db.oportunidades, ...nuevas] }; emit(); marcarSync("portales"); }
   return { creadas: nuevas.length, errores };

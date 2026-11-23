@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiRouteImport } from './routes/api'
 import { Route as ClientesRouteImport } from './routes/clientes'
+import { Route as DatosRouteImport } from './routes/datos'
+import { Route as ExperienciaRouteImport } from './routes/experiencia'
 import { Route as IntegracionesRouteImport } from './routes/integraciones'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MiBandejaRouteImport } from './routes/mi-bandeja'
 import { Route as ClientesIdRouteImport } from './routes/clientes_.$id'
 import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
@@ -32,9 +35,24 @@ const ClientesRoute = ClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DatosRoute = DatosRouteImport.update({
+  id: '/datos',
+  path: '/datos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExperienciaRoute = ExperienciaRouteImport.update({
+  id: '/experiencia',
+  path: '/experiencia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IntegracionesRoute = IntegracionesRouteImport.update({
   id: '/integraciones',
   path: '/integraciones',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MiBandejaRoute = MiBandejaRouteImport.update({
@@ -57,7 +75,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api': typeof ApiRoute
   '/clientes': typeof ClientesRoute
+  '/datos': typeof DatosRoute
+  '/experiencia': typeof ExperienciaRoute
   '/integraciones': typeof IntegracionesRoute
+  '/login': typeof LoginRoute
   '/mi-bandeja': typeof MiBandejaRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
@@ -66,7 +87,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api': typeof ApiRoute
   '/clientes': typeof ClientesRoute
+  '/datos': typeof DatosRoute
+  '/experiencia': typeof ExperienciaRoute
   '/integraciones': typeof IntegracionesRoute
+  '/login': typeof LoginRoute
   '/mi-bandeja': typeof MiBandejaRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
@@ -76,7 +100,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api': typeof ApiRoute
   '/clientes': typeof ClientesRoute
+  '/datos': typeof DatosRoute
+  '/experiencia': typeof ExperienciaRoute
   '/integraciones': typeof IntegracionesRoute
+  '/login': typeof LoginRoute
   '/mi-bandeja': typeof MiBandejaRoute
   '/clientes_/$id': typeof ClientesIdRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
@@ -87,7 +114,10 @@ export interface FileRouteTypes {
     | '/'
     | '/api'
     | '/clientes'
+    | '/datos'
+    | '/experiencia'
     | '/integraciones'
+    | '/login'
     | '/mi-bandeja'
     | '/clientes/$id'
     | '/oportunidades/$id'
@@ -96,7 +126,10 @@ export interface FileRouteTypes {
     | '/'
     | '/api'
     | '/clientes'
+    | '/datos'
+    | '/experiencia'
     | '/integraciones'
+    | '/login'
     | '/mi-bandeja'
     | '/clientes/$id'
     | '/oportunidades/$id'
@@ -105,7 +138,10 @@ export interface FileRouteTypes {
     | '/'
     | '/api'
     | '/clientes'
+    | '/datos'
+    | '/experiencia'
     | '/integraciones'
+    | '/login'
     | '/mi-bandeja'
     | '/clientes_/$id'
     | '/oportunidades/$id'
@@ -115,7 +151,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiRoute: typeof ApiRoute
   ClientesRoute: typeof ClientesRoute
+  DatosRoute: typeof DatosRoute
+  ExperienciaRoute: typeof ExperienciaRoute
   IntegracionesRoute: typeof IntegracionesRoute
+  LoginRoute: typeof LoginRoute
   MiBandejaRoute: typeof MiBandejaRoute
   ClientesIdRoute: typeof ClientesIdRoute
   OportunidadesIdRoute: typeof OportunidadesIdRoute
@@ -144,11 +183,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/datos': {
+      id: '/datos'
+      path: '/datos'
+      fullPath: '/datos'
+      preLoaderRoute: typeof DatosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/experiencia': {
+      id: '/experiencia'
+      path: '/experiencia'
+      fullPath: '/experiencia'
+      preLoaderRoute: typeof ExperienciaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/integraciones': {
       id: '/integraciones'
       path: '/integraciones'
       fullPath: '/integraciones'
       preLoaderRoute: typeof IntegracionesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mi-bandeja': {
@@ -179,7 +239,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiRoute: ApiRoute,
   ClientesRoute: ClientesRoute,
+  DatosRoute: DatosRoute,
+  ExperienciaRoute: ExperienciaRoute,
   IntegracionesRoute: IntegracionesRoute,
+  LoginRoute: LoginRoute,
   MiBandejaRoute: MiBandejaRoute,
   ClientesIdRoute: ClientesIdRoute,
   OportunidadesIdRoute: OportunidadesIdRoute,

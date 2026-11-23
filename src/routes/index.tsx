@@ -1,8 +1,11 @@
+import { EmptyData } from "@/components/EmptyData";
+import { Button } from "@/components/ui/button";
+import { useVisibleDb, useSession, isAdmin } from "@/lib/auth";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { AppShell, Migas } from "@/components/AppShell";
-import { ETAPAS, alertasDe, clienteDe, cop, etapaDe, useDb, venceHoy, type Oportunidad } from "@/lib/data";
+import { ETAPAS, alertasDe, clienteDe, cop, etapaDe, venceHoy, type Oportunidad } from "@/lib/data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -11,6 +14,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Mapa del proceso comercial de TCI: identificar, evaluar, preparar, seguir y ejecutar oportunidades." },
       { property: "og:title", content: "Tablero de oportunidades · TCI" },
       { property: "og:description", content: "Kanban de oportunidades por etapa del proceso comercial." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Tablero,
@@ -19,16 +24,15 @@ export const Route = createFileRoute("/")({
 const TIPOS = ["Financiero", "Público", "Mixto", "Privado"];
 
 function Tablero() {
-  const db = useDb();
-  const [flt, setFlt] = useState({ entidad: "", tipo: "", fuente: "", requisitos: "" });
+  const db = useVisibleDb();
+  const [flt, setFlt] = useState({ entidad: "", tipo: "", fuente: "" });
   const [alerta, setAlerta] = useState("");
 
   const pasa = (o: Oportunidad) => {
     const c = clienteDe(db, o.clienteId);
     return (!flt.entidad || c?.nombre === flt.entidad)
       && (!flt.tipo || c?.tipo === flt.tipo)
-      && (!flt.fuente || o.fuente === flt.fuente)
-      && (!flt.requisitos || o.requisitos === flt.requisitos);
+      && (!flt.fuente || o.fuente === flt.fuente);
   };
   const alertas = (o: Oportunidad) => alertasDe(o, db);
   const pasaAlerta = (o: Oportunidad) => !alerta || alertas(o).includes(alerta);
@@ -39,23 +43,25 @@ function Tablero() {
   const nPqr = db.oportunidades.filter((o) => alertas(o).includes("PQR con ANS vencido")).length;
 
   const AlertaBtn = ({ nombre, n }: { nombre: string; n: number }) => (
-    <button onClick={() => setAlerta((a) => (a === nombre ? "" : nombre))}
+    <Button variant="ghost" onClick={() => setAlerta((a) => (a === nombre ? "" : nombre))}
       className={`rounded-full border px-3 py-1 text-xs font-semibold ${alerta === nombre ? "border-destructive bg-destructive text-destructive-foreground" : "border-warning bg-warning-soft text-warning-foreground"}`}>
       {nombre}: {n}
-    </button>
+    </Button>
   );
 
   return (
     <AppShell>
       <Migas items={[{ label: "Tablero" }]} />
-      <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-wine">Tablero de oportunidades</h1>
+      <h1 className="font-display text-3xl font-bold uppercase tracking-normal text-wine">Tablero de oportunidades</h1>
 
+      {db.origen.experiencia && !db.oportunidades.length && <p className="mt-4 border-l-4 border-primary bg-accent p-4 text-sm">Cargaste experiencia. Para ver oportunidades, carga la plantilla o usa 'Agregar/actualizar'.</p>}
+      {!db.oportunidades.length && <div className="mt-6"><EmptyData/></div>}
       {/* Mapa del proceso */}
       <div className="mt-5 flex flex-wrap items-stretch gap-2">
         {ETAPAS.map((e, i) => (
           <div key={e.n} className="flex items-center gap-2">
             <div className="rounded-xl border bg-card px-4 py-3 text-center">
-              <p className="font-display text-sm font-bold uppercase tracking-wider text-primary">{e.n}. {e.nombre}</p>
+              <p className="font-display text-sm font-bold uppercase tracking-normal text-primary">{e.n}. {e.nombre}</p>
               <p className="font-display text-2xl font-bold">{db.oportunidades.filter((o) => etapaDe(o.estado) === e.n).length}</p>
             </div>
             {i < ETAPAS.length - 1 && <span className="text-xl text-muted-foreground">→</span>}
@@ -69,15 +75,15 @@ function Tablero() {
       {/* Barra de alertas */}
       <div className="mt-5 flex flex-wrap items-center gap-3 rounded-lg border border-warning bg-warning-soft px-4 py-3 text-warning-foreground">
         <AlertTriangle className="h-5 w-5 shrink-0" />
-        <span className="text-sm font-semibold">Alertas (haz clic para filtrar):</span>
+        <span className="text-sm font-semibold">Alertas:</span>
         <AlertaBtn nombre="Sin atender" n={nSinAtender} />
         <AlertaBtn nombre="Vence hoy" n={nVenceHoy} />
         <AlertaBtn nombre="PQR con ANS vencido" n={nPqr} />
-        {alerta && <button onClick={() => setAlerta("")} className="text-xs underline">Quitar filtro</button>}
+        {alerta && <Button variant="ghost" onClick={() => setAlerta("")} className="text-xs underline">Quitar filtro</Button>}
       </div>
 
       {/* Filtros */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <select className="field" value={flt.entidad} onChange={(e) => setFlt({ ...flt, entidad: e.target.value })}>
           <option value="">Entidad: todas</option>
           {db.clientes.map((c) => <option key={c.id}>{c.nombre}</option>)}
@@ -88,12 +94,9 @@ function Tablero() {
         </select>
         <select className="field" value={flt.fuente} onChange={(e) => setFlt({ ...flt, fuente: e.target.value })}>
           <option value="">Fuente: todas</option>
-          {["SECOP II", "Portal propio"].map((x) => <option key={x}>{x}</option>)}
+          {["SECOP II", "Portal propio", "Venta directa", "Otro"].map((x) => <option key={x}>{x}</option>)}
         </select>
-        <select className="field" value={flt.requisitos} onChange={(e) => setFlt({ ...flt, requisitos: e.target.value })}>
-          <option value="">Requisitos: todos</option>
-          {["Estándar", "Dirigido"].map((x) => <option key={x}>{x}</option>)}
-        </select>
+
       </div>
 
       {/* Kanban */}

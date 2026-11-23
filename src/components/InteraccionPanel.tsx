@@ -1,17 +1,20 @@
+import { Button } from "@/components/ui/button";
+import { useVisibleDb, useSession, isAdmin } from "@/lib/auth";
 import { useState } from "react";
 import { toast } from "sonner";
 import { X, Phone, Users, Mail, MoreHorizontal } from "lucide-react";
-import { USUARIOS, agregarInteraccion, useDb } from "@/lib/data";
+import { agregarInteraccion } from "@/lib/data";
 
 const TIPOS = [{ l: "Llamada", I: Phone }, { l: "Reunión", I: Users }, { l: "Correo", I: Mail }, { l: "Otro", I: MoreHorizontal }];
 
 export function InteraccionPanel({ abierto, onCerrar, clienteId, oportunidadId }: { abierto: boolean; onCerrar: () => void; clienteId?: string; oportunidadId?: string }) {
-  const db = useDb();
+  const db = useVisibleDb();
+  const session=useSession();
   const hoy = new Date().toISOString().slice(0, 10);
   const [f, setF] = useState({
-    cliente: clienteId ?? db.clientes[0]!.id,
+    cliente: clienteId ?? db.clientes[0]?.id ?? "",
     oportunidad: oportunidadId ?? "",
-    tipo: "Llamada", fecha: hoy, responsable: "Luisa Pérez",
+    tipo: "Llamada", fecha: hoy, responsable: session?.nombre ?? "",
     participantes: "", descripcion: "", seguimiento: false, proxFecha: "", proxDesc: "",
   });
   const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
@@ -21,6 +24,7 @@ export function InteraccionPanel({ abierto, onCerrar, clienteId, oportunidadId }
 
   const guardar = (e: React.FormEvent) => {
     e.preventDefault();
+    if(!db.clientes.some((c)=>c.id===f.cliente)){toast.error("Selecciona un cliente.");return;}
     if (!f.descripcion.trim()) { toast.error("Escribe la descripción de la interacción"); return; }
     if (f.seguimiento && (!f.proxFecha || !f.proxDesc.trim())) { toast.error("Completa la próxima acción"); return; }
     agregarInteraccion(
@@ -37,8 +41,8 @@ export function InteraccionPanel({ abierto, onCerrar, clienteId, oportunidadId }
     <div className="fixed inset-0 z-50 flex justify-end bg-foreground/40" onClick={onCerrar}>
       <aside className="h-full w-full max-w-md overflow-y-auto bg-background p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-wine">Registrar interacción</h2>
-          <button aria-label="Cerrar" onClick={onCerrar} className="rounded-md p-1 hover:bg-accent"><X className="h-5 w-5" /></button>
+          <h2 className="font-display text-2xl font-bold uppercase tracking-normal text-wine">Registrar interacción</h2>
+          <Button variant="ghost" aria-label="Cerrar" onClick={onCerrar} className="rounded-md p-1 hover:bg-accent"><X className="h-5 w-5" /></Button>
         </div>
         <form onSubmit={guardar} className="mt-5 space-y-4">
           <div><label className={label}>Cliente</label>
@@ -55,16 +59,16 @@ export function InteraccionPanel({ abierto, onCerrar, clienteId, oportunidadId }
           <div><span className={label}>Tipo de interacción</span>
             <div className="grid grid-cols-4 gap-2">
               {TIPOS.map(({ l, I }) => (
-                <button type="button" key={l} onClick={() => set("tipo", l)} className={`flex flex-col items-center gap-1 rounded-lg border-2 p-2 text-xs font-semibold ${f.tipo === l ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:border-primary"}`}>
+                <Button variant="ghost" type="button" key={l} onClick={() => set("tipo", l)} className={`flex flex-col items-center gap-1 rounded-lg border-2 p-2 text-xs font-semibold ${f.tipo === l ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:border-primary"}`}>
                   <I className="h-4 w-4" />{l}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
           <div className="grid gap-4 grid-cols-2">
             <div><label className={label}>Fecha</label><input type="date" className="field" value={f.fecha} onChange={(e) => set("fecha", e.target.value)} /></div>
             <div><label className={label}>Responsable</label>
-              <select className="field" value={f.responsable} onChange={(e) => set("responsable", e.target.value)}>{USUARIOS.map((u) => <option key={u}>{u}</option>)}</select>
+              <select className="field" value={f.responsable} onChange={(e) => set("responsable", e.target.value)}>{[...new Set([session?.nombre??"",...db.usuarios.map((u)=>u.nombre)].filter(Boolean))].map((u) => <option key={u}>{u}</option>)}</select>
             </div>
           </div>
           <div><label className={label}>Participantes</label><input className="field" placeholder="Ej. Gerente de TI" value={f.participantes} onChange={(e) => set("participantes", e.target.value)} /></div>
@@ -79,8 +83,8 @@ export function InteraccionPanel({ abierto, onCerrar, clienteId, oportunidadId }
             </div>
           )}
           <div className="flex gap-3">
-            <button className="rounded-md bg-primary px-6 py-2.5 font-semibold text-primary-foreground hover:bg-wine">Guardar</button>
-            <button type="button" onClick={onCerrar} className="rounded-md border px-6 py-2.5 font-semibold hover:bg-accent">Cancelar</button>
+            <Button variant="ghost" className="rounded-md bg-primary px-6 py-2.5 font-semibold text-primary-foreground hover:bg-wine">Guardar</Button>
+            <Button variant="ghost" type="button" onClick={onCerrar} className="rounded-md border px-6 py-2.5 font-semibold hover:bg-accent">Cancelar</Button>
           </div>
         </form>
       </aside>

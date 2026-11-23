@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Use one browser-persisted canonical store for all CRM entities; derive client summaries and views from it to avoid divergent fixed data.
+- Parse workbooks in the browser, validate references against the chosen replacement/merge scope, and require review before saving.
+- Keep demo sessions in sessionStorage and apply role-scoped reads and route gates centrally; this is not production authentication.

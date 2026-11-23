@@ -1,9 +1,13 @@
+import { toast } from "sonner";
+import { maskIdentification } from "@/lib/workbook";
+import { Button } from "@/components/ui/button";
+import { useVisibleDb, useSession, isAdmin } from "@/lib/auth";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus, Copy } from "lucide-react";
 import { AppShell, EstadoBadge, Migas } from "@/components/AppShell";
 import { InteraccionPanel } from "@/components/InteraccionPanel";
-import { FUENTES, clienteDe, cop, etapaDe, opDe, pqrVencidosDe, useDb } from "@/lib/data";
+import { useSyncs, clienteDe, cop, etapaDe, opDe, pqrVencidosDe } from "@/lib/data";
 
 export const Route = createFileRoute("/clientes_/$id")({
   head: () => ({
@@ -12,6 +16,8 @@ export const Route = createFileRoute("/clientes_/$id")({
       { name: "description", content: "Oportunidades, proyectos, PQR, interacciones, pendientes e histórico del cliente." },
       { property: "og:title", content: "Vista 360° del cliente · TCI" },
       { property: "og:description", content: "Toda la información del cliente en un solo lugar." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Vista360,
@@ -21,7 +27,9 @@ const TABS = ["Resumen", "Oportunidades", "Interacciones", "PQR", "Pendientes", 
 
 function Vista360() {
   const { id } = Route.useParams();
-  const db = useDb();
+  const db = useVisibleDb();
+  const syncs = useSyncs();
+  const session=useSession();
   const c = clienteDe(db, id);
   const [tab, setTab] = useState<(typeof TABS)[number]>("Resumen");
   const [panel, setPanel] = useState(false);
@@ -32,6 +40,10 @@ function Vista360() {
   const pendientes = db.pendientes.filter((p) => p.clienteId === c.id);
   const pqr = db.pqr.filter((p) => p.clienteId === c.id);
   const vencidos = pqrVencidosDe(db, c.id);
+  const projects=db.proyectos.filter((p)=>p.clienteId===c.id);
+  const historical=projects.some((p)=>p.costo_mcop!==null) ? cop(projects.reduce((n,p)=>n+(p.costo_mcop??0),0)) : projects.length ? cop(projects.reduce((n,p)=>n+p.valor_contrato_cop,0)/1e6) : c.costo;
+  const lastSurvey=db.encuestas.filter((e)=>e.clienteId===c.id).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+  const copySurvey=async()=>{const url=new URL("https://forms.office.com/Pages/ResponsePage.aspx");url.searchParams.set("id","TCI-Encuesta-Simulada");url.searchParams.set("id_cliente",c.id);try{await navigator.clipboard.writeText(url.toString());toast.success("Enlace de encuesta copiado (Simulado)");}catch{toast.error("No se pudo copiar el enlace.");}};
 
   return (
     <AppShell>
@@ -40,15 +52,15 @@ function Vista360() {
       <div className="rounded-xl border bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-display text-3xl font-bold text-wine">{c.nombre}</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="min-w-0 break-words font-display text-3xl font-bold text-wine">{c.nombre}</h1>
               <EstadoBadge estado={c.estado} />
             </div>
             <p className="text-muted-foreground">NIT {c.nit} · {c.tipo}</p>
           </div>
-          <button onClick={() => setPanel(true)} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-wine">
+          <Button variant="ghost" onClick={() => setPanel(true)} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-wine">
             <MessageSquarePlus className="h-4 w-4" /> Registrar interacción
-          </button>
+          </Button>
         </div>
         {vencidos.length > 0 && (
           <p className="mt-3 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground">
@@ -63,9 +75,9 @@ function Vista360() {
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {[["Costo del proyecto", c.costo], ["Utilidad", c.utilidad], ["Proyectos históricos", String(c.historicos)]].map(([k, v]) => (
+        {[["Valor contratado histórico", historical], ["Utilidad", c.utilidad || "—"], ["Proyectos históricos", String(c.historicos)]].map(([k, v]) => (
           <div key={k} className="rounded-xl bg-primary p-5 text-primary-foreground">
-            <p className="font-display text-sm uppercase tracking-widest opacity-80">{k}</p>
+            <p className="font-display text-sm uppercase tracking-normal opacity-80">{k}</p>
             <p className="mt-1 font-display text-4xl font-bold">{v}</p>
           </div>
         ))}
@@ -74,18 +86,19 @@ function Vista360() {
       <div className="mt-6 rounded-xl border bg-card p-5">
         <h3 className="section-title mb-3">Fuentes de datos</h3>
         <div className="flex flex-wrap gap-3">
-          {FUENTES.map((f) => (
+          {([{nombre:"ISSA",sync:syncs.issa},{nombre:"Microsoft Forms",sync:syncs.forms},{nombre:"Siigo",sync:syncs.siigo},{nombre:"SharePoint",sync:syncs.sharepoint}]).map((f) => (
             <div key={f.nombre} className="rounded-lg border border-primary px-3 py-2">
-              <p className="text-sm font-bold text-primary">{f.nombre}</p>
+              <p className="text-sm font-bold text-primary">{f.nombre} · Simulado</p>
               <p className="text-xs text-muted-foreground">Última sincronización: {f.sync}</p>
             </div>
           ))}
         </div>
       </div>
 
+      <section className="mt-6 border-y py-5"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="section-title">Última encuesta (Forms)</h3><Button variant="outline" onClick={()=>void copySurvey()}><Copy className="h-4 w-4"/>Copiar enlace de encuesta</Button></div>{lastSurvey?<><p className="mt-3 font-display text-3xl font-bold text-primary">{lastSurvey.nota} / 5</p><p className="text-sm text-muted-foreground">{lastSurvey.fecha} · {lastSurvey.comentario}</p></>:<p className="mt-3 text-sm text-muted-foreground">Sin respuestas recibidas de Forms.</p>}<span className="text-xs font-semibold text-primary">Simulado</span></section>
       <div className="mt-8 flex gap-1 overflow-x-auto border-b">
         {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`whitespace-nowrap border-b-2 px-4 py-2 font-display text-sm font-bold uppercase tracking-wider ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{t}</button>
+          <Button variant="ghost" key={t} onClick={() => setTab(t)} className={`whitespace-nowrap border-b-2 px-4 py-2 font-display text-sm font-bold uppercase tracking-normal ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{t}</Button>
         ))}
       </div>
 
@@ -94,7 +107,7 @@ function Vista360() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card title="Proyectos">
               {c.proyectos.length === 0 && <p className="text-sm text-muted-foreground">Sin proyectos aún.</p>}
-              {c.proyectos.map((p) => <Row key={p.nombre} a={p.nombre} b={p.estado} />)}
+              {c.proyectos.map((p) => <Row key={`${p.nombre}-${c.proyectos.indexOf(p)}`} a={p.nombre} b={p.estado} />)}
             </Card>
             <Card title="Última interacción">
               {interacciones[0] ? <><p className="font-semibold">{interacciones[0].tipo} · {interacciones[0].fecha.split("-").reverse().join("/")}</p><p className="mt-1 text-sm text-muted-foreground">{interacciones[0].descripcion}</p></> : <p className="text-muted-foreground">Sin interacciones</p>}
@@ -145,7 +158,7 @@ function Vista360() {
               <div key={p.id} className="flex items-center justify-between gap-4 border-b py-2 text-sm last:border-0">
                 <div>
                   <p className="font-medium">{p.id} · {p.asunto}</p>
-                  <p className="text-xs text-muted-foreground">Fuente: {p.fuente}</p>
+                  <p className="text-xs text-muted-foreground">Fuente: {p.fuente} · {p.tipo_identificacion} {maskIdentification(p.numero_identificacion)}</p>
                 </div>
                 <div className="text-right">
                   <p>{p.estado}</p>
@@ -178,8 +191,8 @@ function Vista360() {
               <div className="flex flex-wrap gap-2">{c.lineas.map((l) => <span key={l} className="rounded-full border border-primary px-3 py-1 text-sm font-medium text-primary">{l}</span>)}</div>
             </Card>
             <Card title="Proyectos previos (alimenta la evaluación)">
-              {c.proyectos.map((p) => <Row key={p.nombre} a={p.nombre} b={p.estado} />)}
-              <Row a="Costo histórico" b={c.costo} />
+              {c.proyectos.map((p) => <Row key={`${p.nombre}-${c.proyectos.indexOf(p)}`} a={p.nombre} b={p.estado} />)}
+              <Row a="Valor contratado histórico" b={historical} />
               <Row a="Utilidad histórica" b={c.utilidad} />
             </Card>
           </div>

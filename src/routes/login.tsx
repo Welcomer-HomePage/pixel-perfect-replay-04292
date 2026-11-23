@@ -1,0 +1,9 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { LogIn } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { login } from "@/lib/auth";
+export const Route=createFileRoute("/login")({head:()=>({meta:[{title:"Ingreso · TCI Gestión de Clientes"},{name:"description",content:"Acceso por perfil a TCI Gestión de Clientes."},{property:"og:title",content:"Ingreso · TCI"},{property:"og:description",content:"Acceso por perfil a la aplicación TCI."},{property:"og:type",content:"website"},{name:"twitter:card",content:"summary"}]}),component:Login});
+function Login(){const [usuario,setUsuario]=useState(""),[clave,setClave]=useState(""),[error,setError]=useState("");const navigate=useNavigate();
+return <main className="flex min-h-screen flex-col bg-background"><header className="bg-primary px-6 py-5 text-primary-foreground"><div className="mx-auto max-w-7xl font-display text-2xl font-bold">TCI · Gestión de Clientes</div></header><div className="mx-auto my-auto w-full max-w-md px-6 py-12"><p className="mb-4 text-xs font-bold uppercase text-primary">Simulado</p><h1 className="font-display text-4xl font-bold text-wine">Iniciar sesión</h1><form className="mt-8 space-y-5" onSubmit={(e)=>{e.preventDefault();if(login(usuario,clave)){void navigate({to:"/"});}else setError("Usuario o clave incorrectos.");}}><label className="block text-sm font-semibold">Usuario<input autoComplete="username" className="field mt-2" value={usuario} onChange={(e)=>setUsuario(e.target.value)} required/></label><label className="block text-sm font-semibold">Clave<input type="password" autoComplete="current-password" className="field mt-2" value={clave} onChange={(e)=>setClave(e.target.value)} required/></label>{error&&<p role="alert" className="text-sm text-destructive">{error}</p>}<Button type="submit" className="w-full"><LogIn className="h-4 w-4"/>Ingresar</Button></form></div></main>;
+}

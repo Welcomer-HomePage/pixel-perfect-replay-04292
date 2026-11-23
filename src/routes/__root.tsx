@@ -6,13 +6,16 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { hydrateDb } from "@/lib/data";
+import { allowedPath, restoreSession, useSession } from "@/lib/auth";
 
 function NotFoundComponent() {
   return (
@@ -113,10 +116,18 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [ready,setReady]=useState(false);
+  const [bootError,setBootError]=useState("");
+  const session=useSession();
+  const router=useRouter();
+  const pathname=useRouterState({select:(s)=>s.location.pathname});
+  useEffect(()=>{void hydrateDb().then(()=>{restoreSession();setReady(true);}).catch(()=>setBootError("No se pudieron cargar los datos guardados en este navegador."));},[]);
+  const allowed=ready && allowedPath(session,pathname);
+  useEffect(()=>{if(!ready)return;if(!session && pathname!=="/login")void router.navigate({to:"/login"});else if(session && (pathname==="/login" || !allowedPath(session,pathname)))void router.navigate({to:session.viewAs==="Recursos Humanos"?"/mi-bandeja":"/"});},[ready,session,pathname,router]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      {allowed ? <Outlet /> : <div className="flex min-h-screen items-center justify-center text-muted-foreground">{bootError || "Cargando TCI…"}</div>}
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
