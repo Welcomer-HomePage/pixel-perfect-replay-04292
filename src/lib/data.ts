@@ -237,11 +237,19 @@ export function hasCrmData(d: Db) {
 }
 export async function loadRealTci() {
   const real = await import("./real-data.json");
-  replaceDb({ ...emptyDb(), ...(real.default as Pick<Db, "clientes" | "proyectos">), usuarios: db.usuarios.length ? db.usuarios : demoUsuarios(), origen: { archivo: "Datos reales de TCI", fecha: new Date().toISOString(), experiencia: true } });
+  replaceDb({ ...emptyDb(), ...(real.default as Pick<Db, "clientes" | "proyectos" | "oportunidades">), usuarios: db.usuarios.length ? db.usuarios : demoUsuarios(), origen: { archivo: "Datos reales de TCI", fecha: new Date().toISOString(), experiencia: true } });
 }
 export async function hydrateDb() {
   if (typeof window === "undefined") return;
-  try { const raw = window.localStorage.getItem(KEY); if (raw) { const saved=JSON.parse(raw) as Db; db = deriveDb({...saved,syncs:saved.syncs??emptyDb().syncs}); if (hasCrmData(db)) { refreshStore(); return; } } } catch { /* archivo local inválido */ }
+  try { const raw = window.localStorage.getItem(KEY); if (raw) { const saved=JSON.parse(raw) as Db; db = deriveDb({...saved,syncs:saved.syncs??emptyDb().syncs}); if (hasCrmData(db)) {
+    if (!db.oportunidades.length && db.clientes.length) {
+      const real = await import("./real-data.json");
+      const ids = new Set(db.clientes.map((c) => c.id));
+      const ops = (real.default as Pick<Db, "oportunidades">).oportunidades.filter((o) => ids.has(o.clienteId));
+      if (ops.length) { db = deriveDb({ ...db, oportunidades: ops }); }
+    }
+    refreshStore(); return;
+  } } } catch { /* archivo local inválido */ }
   await loadRealTci();
 }
 
