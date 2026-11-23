@@ -232,11 +232,17 @@ export function deriveDb(d: Db): Db {
 }
 export function replaceDb(next: Db) { const prev = db; db = deriveDb(next); try { emit(); } catch (e) { db = prev; throw e; } }
 export function restoreDemo() { replaceDb(seed()); }
+export function hasCrmData(d: Db) {
+  return [d.clientes, d.oportunidades, d.proyectos, d.equipo, d.encuestas, d.aliados, d.interacciones, d.pendientes, d.pqr, d.notificaciones].some((rows) => rows.length > 0);
+}
+export async function loadRealTci() {
+  const real = await import("./real-data.json");
+  replaceDb({ ...emptyDb(), ...(real.default as Pick<Db, "clientes" | "proyectos">), usuarios: db.usuarios.length ? db.usuarios : demoUsuarios(), origen: { archivo: "Datos reales de TCI", fecha: new Date().toISOString(), experiencia: true } });
+}
 export async function hydrateDb() {
   if (typeof window === "undefined") return;
-  try { const raw = window.localStorage.getItem(KEY); if (raw) { const saved=JSON.parse(raw) as Db; db = deriveDb({...saved,syncs:saved.syncs??emptyDb().syncs}); refreshStore(); return; } } catch { /* archivo local inválido */ }
-  const initial = await import("./initial-data.json");
-  replaceDb(initial.default as Db);
+  try { const raw = window.localStorage.getItem(KEY); if (raw) { const saved=JSON.parse(raw) as Db; db = deriveDb({...saved,syncs:saved.syncs??emptyDb().syncs}); if (hasCrmData(db)) { refreshStore(); return; } } } catch { /* archivo local inválido */ }
+  await loadRealTci();
 }
 
 // ============= Derivados =============

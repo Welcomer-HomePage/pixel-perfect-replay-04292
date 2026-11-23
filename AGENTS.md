@@ -12,3 +12,4 @@
 - Use one browser-persisted canonical store for all CRM entities; derive client summaries and views from it to avoid divergent fixed data.
 - Parse workbooks in the browser, validate references against the chosen replacement/merge scope, and require review before saving.
 - Keep demo sessions in sessionStorage and apply role-scoped reads and route gates centrally; this is not production authentication.
+- Keep the bundled real-data seed separate from the legacy demo seed; hydrate it only when CRM records are empty so subsequent workbook imports remain authoritative.

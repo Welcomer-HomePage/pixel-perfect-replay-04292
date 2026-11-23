@@ -1,3 +1,4 @@
+import { EmptyData } from "@/components/EmptyData";
 import { Button } from "@/components/ui/button";
 import { useVisibleDb, useSession, isAdmin } from "@/lib/auth";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -71,7 +72,7 @@ function MiBandeja() {
         </div>
       ) : (
         <div className="mt-6 divide-y rounded-xl border bg-card">
-          {items.length === 0 && <p className="p-5 text-muted-foreground">No tienes pendientes. ¡Buen trabajo!</p>}
+          {items.length === 0 && (db.origen.experiencia ? <EmptyData/> : <p className="p-5 text-muted-foreground">No tienes pendientes. ¡Buen trabajo!</p>)}
           {items.map((it, i) => (
             <Link key={i} to="/oportunidades/$id" params={{ id: it.opId }} search={{ paso: it.paso }} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-accent">
               <div>

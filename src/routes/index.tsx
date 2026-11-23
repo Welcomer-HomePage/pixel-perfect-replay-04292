@@ -54,7 +54,6 @@ function Tablero() {
       <Migas items={[{ label: "Tablero" }]} />
       <h1 className="font-display text-3xl font-bold uppercase tracking-normal text-wine">Tablero de oportunidades</h1>
 
-      {db.origen.experiencia && !db.oportunidades.length && <p className="mt-4 border-l-4 border-primary bg-accent p-4 text-sm">Cargaste experiencia. Para ver oportunidades, carga la plantilla o usa 'Agregar/actualizar'.</p>}
       {!db.oportunidades.length && <div className="mt-6"><EmptyData/></div>}
       {/* Mapa del proceso */}
       <div className="mt-5 flex flex-wrap items-stretch gap-2">

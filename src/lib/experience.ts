@@ -8,5 +8,5 @@ export function filterExperience(projects:Contrato[],clients:Cliente[],f:Experie
 export function experienceTotals(projects:Contrato[]){
  const intervals=projects.filter((p)=>p.fecha_inicio && p.fecha_fin).map((p)=>[Date.parse(p.fecha_inicio),Date.parse(p.fecha_fin)] as const).filter(([a,b])=>Number.isFinite(a)&&Number.isFinite(b)&&b>=a).sort((a,b)=>a[0]-b[0]);
  let days=0,end=0;for(const [a,b] of intervals){days+=Math.max(0,b-Math.max(a,end))/864e5;end=Math.max(end,b);}
- return {contratos:projects.length,valor:projects.reduce((s,p)=>s+p.valor_contrato_cop,0),anios:days/365.25};
+ return {contratos:projects.length,clientes:new Set(projects.map((p)=>p.clienteId)).size,valor:projects.reduce((s,p)=>s+p.valor_contrato_cop,0),cerrados:projects.filter((p)=>p.estado==='Cerrado').reduce((s,p)=>s+p.valor_contrato_cop,0),smmlv:projects.reduce((s,p)=>s+(p.valor_smmlv??0),0),anios:days/365.25};
 }
